@@ -9,8 +9,6 @@ type ClientConfig struct {
 type Client struct {
 	httpClient *http.Client
 	config     ClientConfig
-
-	enrichmentRequester
 }
 
 func NewClient(opt *ClientConfig) *Client {
