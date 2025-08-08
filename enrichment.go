@@ -50,7 +50,6 @@ func (c *Client) EnrichTransaction(enrichmentReq EnrichmentRequest) (enrichment 
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&enrichment)
-
 	return
 }
 
@@ -78,11 +77,10 @@ func (c *Client) EnrichTransactionCollection(enrichmentReq []EnrichmentRequest) 
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&enrichment)
-
 	return
 }
 
-func (c *Client) EnrichmentStatus(ID string) (EnrichmentCollectionStatus, error) {
+func (c *Client) EnrichmentStatus(ID string) (status EnrichmentCollectionStatus, err error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
 		fmt.Sprintf("https://xyo.financial/v1/ai/enrichments/status/%s", ID),
@@ -104,7 +102,6 @@ func (c *Client) EnrichmentStatus(ID string) (EnrichmentCollectionStatus, error)
 	var response struct {
 		Status EnrichmentCollectionStatus `json:"status"`
 	}
-	err = json.NewDecoder(resp.Body).Decode(&response)
 
-	return response.Status, err
+	return response.Status, json.NewDecoder(resp.Body).Decode(&response)
 }
