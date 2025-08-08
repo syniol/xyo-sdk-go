@@ -1,13 +1,71 @@
 package xyo_test
 
 import (
-	"testing"
-
+	"context"
+	"encoding/json"
 	"github.com/syniol/xyo-sdk-go"
+	"log"
+	"net/http"
+	"testing"
 )
 
+var server http.Server
+
+func init() {
+	// Spinning up a mock TLS Server for test.
+	// /etc/hosts is populated in Docker with 127.0.0.1 api.xyo.financial
+	server := http.Server{
+		Addr: ":80",
+	}
+
+	http.HandleFunc("/v1/ai/finance/enrichment", func(wr http.ResponseWriter, rq *http.Request) {
+		response, _ := json.MarshalIndent(map[string]bool{"healthy": true}, "", "\t")
+		_, _ = wr.Write(response)
+	})
+
+	http.HandleFunc("/v1/ai/finance/enrichments", func(wr http.ResponseWriter, rq *http.Request) {
+		response, _ := json.MarshalIndent(map[string]bool{"healthy": true}, "", "\t")
+		_, _ = wr.Write(response)
+	})
+
+	http.HandleFunc("/v1/ai/finance/enrichments/status", func(wr http.ResponseWriter, rq *http.Request) {
+		response, _ := json.MarshalIndent(map[string]bool{"healthy": true}, "", "\t")
+		_, _ = wr.Write(response)
+	})
+
+	go func() {
+		println("🚀 RESTful TCP Server is running at: 127.0.0.1:80")
+		log.Fatal(server.ListenAndServe())
+	}()
+}
+
 func TestNewClient(t *testing.T) {
-	_, _ = xyo.
-		NewClient(&xyo.ClientConfig{APIKey: "sss"}).
-		EnrichmentStatus("Dummy Transaction")
+	_ = xyo.
+		NewClient(&xyo.ClientConfig{
+			APIKey: "YourAPIKeyFromWebDashboard",
+		})
+
+	t.Run("health", func(t *testing.T) {
+		// todo: API Test call to dummy API
+	})
+
+	t.Run("Enrichment", func(t *testing.T) {
+		// todo: API Test call to dummy API
+	})
+
+	t.Run("Enrichments", func(t *testing.T) {
+		// todo: API Test call to dummy API
+	})
+
+	t.Run("Enrichments Status", func(t *testing.T) {
+		// todo: API Test call to dummy API
+	})
+
+	// Shutting down test server
+	t.Cleanup(func() {
+		if err := server.Shutdown(context.TODO()); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 }
