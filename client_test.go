@@ -14,10 +14,13 @@ var server http.Server
 
 func init() {
 	// Spinning up a mock TLS Server for test.
-	// /etc/hosts is populated in Docker with 127.0.0.1 api.xyo.financial
-	server := http.Server{
-		Addr: ":80",
-	}
+	// /etc/hosts is populated in Docker with: 127.0.0.1 api.xyo.financial
+	server := http.Server{Addr: ":80"}
+
+	http.HandleFunc("/v1/healthz", func(wr http.ResponseWriter, rq *http.Request) {
+		response, _ := json.MarshalIndent(map[string]bool{"healthy": true}, "", "\t")
+		_, _ = wr.Write(response)
+	})
 
 	http.HandleFunc("/v1/ai/finance/enrichment", func(wr http.ResponseWriter, rq *http.Request) {
 		response, _ := json.MarshalIndent(map[string]bool{"healthy": true}, "", "\t")
