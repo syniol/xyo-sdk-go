@@ -1,15 +1,19 @@
 package xyo
 
+import "net/http"
+
 type ClientConfig struct {
 	APIKey string
 }
 
 type Client struct {
-	config *ClientConfig
+	httpClient *http.Client
+	config     *ClientConfig
 }
 
 func NewClient(opt *ClientConfig) *Client {
 	return &Client{
-		config: opt,
+		httpClient: http.DefaultClient,
+		config:     opt,
 	}
 }
