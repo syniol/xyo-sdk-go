@@ -6,4 +6,6 @@ COPY . /var/usr/local/xyo/sdk
 
 WORKDIR /var/usr/local/xyo/sdk
 
-#RUN go test ./... -v
+ENV CGO_ENABLED=0
+
+RUN go test ./... -v

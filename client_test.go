@@ -3,10 +3,11 @@ package xyo_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/syniol/xyo-sdk-go"
 	"log"
 	"net/http"
 	"testing"
+
+	"github.com/syniol/xyo-sdk-go"
 )
 
 var server http.Server
@@ -46,18 +47,21 @@ func TestNewClient(t *testing.T) {
 		})
 
 	t.Run("health", func(t *testing.T) {
-		// todo: API Test call to dummy API
+		t.Log("API Test call to Health Status API")
 	})
 
 	t.Run("Enrichment", func(t *testing.T) {
+		t.Log("API Test call to Enrichment API")
 		// todo: API Test call to dummy API
 	})
 
 	t.Run("Enrichments", func(t *testing.T) {
+		t.Log("API Test call to Bulk Enrichment Collection API")
 		// todo: API Test call to dummy API
 	})
 
 	t.Run("Enrichments Status", func(t *testing.T) {
+		t.Log("API Test call to Bulk Enrichment Collection Status API")
 		// todo: API Test call to dummy API
 	})
 
