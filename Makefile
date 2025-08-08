@@ -3,4 +3,6 @@ build:
 
 
 run:
-	docker run -it --rm --name XYoFinancialSDKGolang xyo-sdk-go:latest sh
+	docker run -it --rm --name XYO_financial_SDK_Golang \
+		--add-host api.xyo.financial:127.0.0.1 \
+		xyo-sdk-go:latest sh
