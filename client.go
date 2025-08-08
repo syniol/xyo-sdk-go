@@ -8,9 +8,11 @@ type ClientConfig struct {
 
 type Client struct {
 	httpClient *http.Client
-	config     ClientConfig
+	config     *ClientConfig
 }
 
 func NewClient(opt *ClientConfig) *Client {
-	return &Client{}
+	return &Client{
+		config: opt,
+	}
 }
