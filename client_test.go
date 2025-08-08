@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
-	xyo.
+	_, _ = xyo.
 		NewClient(&xyo.ClientConfig{APIKey: "sss"}).
 		EnrichmentStatus("Dummy Transaction")
 }

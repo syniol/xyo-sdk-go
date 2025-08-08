@@ -1,5 +1,9 @@
-FROM golang:1.8-alpine
+FROM golang:1.18-alpine
 
-COPY . .
+RUN mkdir -p /var/usr/local/xyo/sdk
 
-RUN go test ./... -v
+COPY . /var/usr/local/xyo/sdk
+
+WORKDIR /var/usr/local/xyo/sdk
+
+#RUN go test ./... -v
