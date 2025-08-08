@@ -6,13 +6,9 @@ type ClientConfig struct {
 	APIKey string
 }
 
-type clientConnection struct {
+type Client struct {
 	httpClient *http.Client
 	config     ClientConfig
-}
-
-type Client struct {
-	clientConnection
 
 	enrichmentRequester
 }
