@@ -10,7 +10,7 @@ func TestNewClient(t *testing.T) {
 	t.Run("healthy", func(t *testing.T) {
 		client := &internalClient{
 			httpClient: &httpClient{
-				Request: func(req *http.Request) (*http.Response, error) {
+				request: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusOK,
 					}, nil
@@ -25,7 +25,7 @@ func TestNewClient(t *testing.T) {
 	t.Run("unhealthy", func(t *testing.T) {
 		client := &internalClient{
 			httpClient: &httpClient{
-				Request: func(req *http.Request) (*http.Response, error) {
+				request: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
 						StatusCode: http.StatusInternalServerError,
 					}, nil

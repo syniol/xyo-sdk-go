@@ -45,7 +45,7 @@ func (c *internalClient) EnrichTransaction(enrichmentReq EnrichmentRequest) (enr
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
 
-	resp, err := c.httpClient.Request(req)
+	resp, err := c.httpClient.request(req)
 	if err != nil {
 		return
 	}
@@ -72,7 +72,7 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []EnrichmentR
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
 
-	resp, err := c.httpClient.Request(req)
+	resp, err := c.httpClient.request(req)
 	if err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (c *internalClient) EnrichmentStatus(ID string) (status EnrichmentCollectio
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
 
-	resp, err := c.httpClient.Request(req)
+	resp, err := c.httpClient.request(req)
 	if err != nil {
 		return "", err
 	}

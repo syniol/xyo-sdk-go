@@ -14,7 +14,7 @@ type Client interface {
 }
 
 type httpClient struct {
-	Request func(req *http.Request) (*http.Response, error)
+	request func(req *http.Request) (*http.Response, error)
 }
 
 type internalClient struct {
@@ -25,7 +25,7 @@ type internalClient struct {
 func NewClient(opt *ClientConfig) Client {
 	return &internalClient{
 		httpClient: &httpClient{
-			Request: http.DefaultClient.Do,
+			request: http.DefaultClient.Do,
 		},
 		config: opt,
 	}
@@ -41,7 +41,7 @@ func (c *internalClient) Health() error {
 		return err
 	}
 
-	resp, err := c.httpClient.Request(req)
+	resp, err := c.httpClient.request(req)
 	if err != nil {
 		return err
 	}
