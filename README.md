@@ -21,13 +21,14 @@ func main() {
 		APIKey: "ghjdasd7321312ghjhgdsahjdf/dasdasuit34324e3274gdsa",
 	})
 
-	resp, err := client.EnrichTransaction(xyo.EnrichmentRequest{
+	resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
 		Content:     "COSTA PICKUP",
 		CountryCode: "GB",
 	})
 	log.Fatal(err)
 
-	jsonResp, _ := json.Marshal(resp)
+	jsonResp, err := json.Marshal(resp)
+	log.Fatal(err)
 	fmt.Println(jsonResp)
 }
 ```
