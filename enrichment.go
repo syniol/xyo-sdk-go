@@ -13,10 +13,10 @@ type EnrichmentRequest struct {
 }
 
 type EnrichmentResponse struct {
-	Merchant    string
-	Description string
-	Categories  []string
-	Logo        string
+	Merchant    string   `json:"merchant"`
+	Description string   `json:"description"`
+	Categories  []string `json:"categories"`
+	Logo        string   `json:"logo"`
 }
 
 type EnrichTransactionCollectionResponse struct {
@@ -32,10 +32,10 @@ const (
 	EnrichmentCollectionPending EnrichmentCollectionStatus = "PENDING"
 )
 
-func (c *internalClient) EnrichTransaction(enrichmentReq EnrichmentRequest) (enrichment *EnrichmentResponse, err error) {
+func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	req, err := http.NewRequest(
@@ -44,7 +44,7 @@ func (c *internalClient) EnrichTransaction(enrichmentReq EnrichmentRequest) (enr
 		bytes.NewReader(requestBody),
 	)
 	if err != nil {
-		return
+		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -52,17 +52,23 @@ func (c *internalClient) EnrichTransaction(enrichmentReq EnrichmentRequest) (enr
 
 	resp, err := c.httpClient.request(req)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(enrichment)
-	return
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("EnrichTransaction returned status code %d", resp.StatusCode)
+	}
+
+	var enrichmentResponse EnrichmentResponse
+	err = json.NewDecoder(resp.Body).Decode(&enrichmentResponse)
+
+	return &enrichmentResponse, err
 }
 
-func (c *internalClient) EnrichTransactionCollection(enrichmentReq []EnrichmentRequest) (enrichment *EnrichTransactionCollectionResponse, err error) {
+func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	req, err := http.NewRequest(
@@ -71,22 +77,29 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []EnrichmentR
 		bytes.NewReader(requestBody),
 	)
 	if err != nil {
-		return
+		return nil, err
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
 
 	resp, err := c.httpClient.request(req)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(enrichment)
-	return
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("enrich transaction collection returned status code: %d", resp.StatusCode)
+	}
+
+	var enrichTransactionCollectionResponse EnrichTransactionCollectionResponse
+	err = json.NewDecoder(resp.Body).Decode(&enrichTransactionCollectionResponse)
+
+	return &enrichTransactionCollectionResponse, err
 }
 
-func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (status EnrichmentCollectionStatus, err error) {
+func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
 		fmt.Sprintf("https://api.xyo.financial/v1/ai/finance/enrichment/transactions/status/%s", ID),
@@ -103,6 +116,10 @@ func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (status En
 	resp, err := c.httpClient.request(req)
 	if err != nil {
 		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("enrich transaction collection status returned status code: %d", resp.StatusCode)
 	}
 
 	var response struct {
