@@ -19,6 +19,11 @@ type EnrichmentResponse struct {
 	Logo        string
 }
 
+type EnrichTransactionCollectionResponse struct {
+	ID   string `json:"id"`
+	Link string `json:"link"`
+}
+
 type EnrichmentCollectionStatus string
 
 const (
@@ -50,11 +55,11 @@ func (c *internalClient) EnrichTransaction(enrichmentReq EnrichmentRequest) (enr
 		return
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&enrichment)
+	err = json.NewDecoder(resp.Body).Decode(enrichment)
 	return
 }
 
-func (c *internalClient) EnrichTransactionCollection(enrichmentReq []EnrichmentRequest) (enrichment []EnrichmentResponse, err error) {
+func (c *internalClient) EnrichTransactionCollection(enrichmentReq []EnrichmentRequest) (enrichment *EnrichTransactionCollectionResponse, err error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
 		return
@@ -77,11 +82,11 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []EnrichmentR
 		return
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&enrichment)
+	err = json.NewDecoder(resp.Body).Decode(enrichment)
 	return
 }
 
-func (c *internalClient) EnrichmentStatus(ID string) (status EnrichmentCollectionStatus, err error) {
+func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (status EnrichmentCollectionStatus, err error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
 		fmt.Sprintf("https://api.xyo.financial/v1/ai/finance/enrichment/transactions/status/%s", ID),
