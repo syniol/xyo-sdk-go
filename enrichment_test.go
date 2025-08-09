@@ -89,19 +89,17 @@ func TestEnrichTransactionCollection(t *testing.T) {
 	})
 
 	t.Run("positive", func(t *testing.T) {
-		sss := map[string]interface{}{
-			"id":   "sadasdadsd",
-			"link": "http://example.com/download/",
+		payloadMap := map[string]interface{}{
+			"id":   "72c037df-d0d3-43ee-9470-323ff35a2e50",
+			"link": "https://api.xyo.financial/ai/transactions/download/72c037df-d0d3-43ee-9470-323ff35a2e50.tar.gz",
 		}
-
-		sxxss, _ := json.Marshal(sss)
-		stringReadCloser := io.NopCloser(bytes.NewReader(sxxss))
+		serialisedPayload, _ := json.Marshal(payloadMap)
 
 		client := &internalClient{
 			httpClient: &httpClient{
 				request: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
-						Body:       stringReadCloser,
+						Body:       io.NopCloser(bytes.NewReader(serialisedPayload)),
 						StatusCode: http.StatusOK,
 					}, nil
 				}},
@@ -143,28 +141,29 @@ func TestEnrichTransactionCollectionStatus(t *testing.T) {
 	})
 
 	t.Run("positive", func(t *testing.T) {
-		sss := map[string]interface{}{
-			"id":   "sadasdadsd",
-			"link": "http://example.com/download/",
+		payloadMap := map[string]interface{}{
+			"status": EnrichmentCollectionStatusReady,
 		}
-
-		sxxss, _ := json.Marshal(sss)
-		stringReadCloser := io.NopCloser(bytes.NewReader(sxxss))
+		serialisedPayload, _ := json.Marshal(payloadMap)
 
 		client := &internalClient{
 			httpClient: &httpClient{
 				request: func(req *http.Request) (*http.Response, error) {
 					return &http.Response{
-						Body:       stringReadCloser,
+						Body:       io.NopCloser(bytes.NewReader(serialisedPayload)),
 						StatusCode: http.StatusOK,
 					}, nil
 				}},
 			config: &ClientConfig{APIKey: "xsadsdsadada"},
 		}
 
-		_, err := client.EnrichTransactionCollectionStatus("dqdasdsa")
+		actual, err := client.EnrichTransactionCollectionStatus("72c037df-d0d3-43ee-9470-323ff35a2e50")
 		if err != nil {
 			t.Error("error", err)
+		}
+
+		if actual != EnrichmentCollectionStatusReady {
+			t.Error("expected a status: 'READY'")
 		}
 	})
 }

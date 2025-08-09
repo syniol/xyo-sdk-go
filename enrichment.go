@@ -27,9 +27,9 @@ type EnrichTransactionCollectionResponse struct {
 type EnrichmentCollectionStatus string
 
 const (
-	EnrichmentCollectionSuccess EnrichmentCollectionStatus = "READY"
-	EnrichmentCollectionFailure EnrichmentCollectionStatus = "FAILED"
-	EnrichmentCollectionPending EnrichmentCollectionStatus = "PENDING"
+	EnrichmentCollectionStatusReady   EnrichmentCollectionStatus = "READY"
+	EnrichmentCollectionStatusFailure EnrichmentCollectionStatus = "FAILED"
+	EnrichmentCollectionStatusPending EnrichmentCollectionStatus = "PENDING"
 )
 
 func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
@@ -125,6 +125,10 @@ func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (Enrichmen
 	var response struct {
 		Status EnrichmentCollectionStatus `json:"status"`
 	}
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return "", err
+	}
 
-	return response.Status, json.NewDecoder(resp.Body).Decode(&response)
+	return response.Status, nil
 }
