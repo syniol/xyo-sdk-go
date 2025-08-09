@@ -32,12 +32,17 @@ const (
 	EnrichmentCollectionStatusPending EnrichmentCollectionStatus = "PENDING"
 )
 
+type EnrichmentCollectionStatusResponse struct {
+	Status EnrichmentCollectionStatus `json:"status"`
+}
+
 type Enrichment interface {
 	EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error)
 	EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
 	EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error)
 }
 
+// EnrichTransaction will generate enriched transaction
 func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
@@ -71,6 +76,7 @@ func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*E
 	return &enrichmentResponse, err
 }
 
+// EnrichTransactionCollection will produce an ID and a download link for bulk transaction enrichment
 func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
@@ -105,6 +111,8 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*Enrichment
 	return &enrichTransactionCollectionResponse, err
 }
 
+// EnrichTransactionCollectionStatus will return the status of bulk transactions enrichment request with a given ID
+// Check EnrichmentCollectionStatus for a possible Status Value
 func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
@@ -128,9 +136,7 @@ func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (Enrichmen
 		return "", fmt.Errorf("enrich transaction collection status returned status code: %d", resp.StatusCode)
 	}
 
-	var response struct {
-		Status EnrichmentCollectionStatus `json:"status"`
-	}
+	var response EnrichmentCollectionStatusResponse
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
 		return "", err

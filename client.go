@@ -24,6 +24,8 @@ type internalClient struct {
 	config     *ClientConfig
 }
 
+// NewClient will accept ClientConfig struct where APIKey is defined
+// Client is required to access Enrichment Services through SDK
 func NewClient(opt *ClientConfig) Client {
 	return &internalClient{
 		httpClient: &httpClient{
@@ -33,6 +35,8 @@ func NewClient(opt *ClientConfig) Client {
 	}
 }
 
+// Health is an indicator of overall API Status
+// This could be done before sending a request or unusual response from API
 func (c *internalClient) Health() error {
 	req, err := http.NewRequest(
 		http.MethodGet,
