@@ -12,6 +12,13 @@ type EnrichmentRequest struct {
 	CountryCode string `json:"countryCode"`
 }
 
+type EnrichmentResponse struct {
+	Merchant    string
+	Description string
+	Categories  []string
+	Logo        string
+}
+
 type EnrichmentCollectionStatus string
 
 const (
@@ -20,7 +27,7 @@ const (
 	EnrichmentCollectionPending EnrichmentCollectionStatus = "PENDING"
 )
 
-func (c *Client) EnrichTransaction(enrichmentReq EnrichmentRequest) (enrichment interface{}, err error) {
+func (c *internalClient) EnrichTransaction(enrichmentReq EnrichmentRequest) (enrichment *EnrichmentResponse, err error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
 		return
@@ -36,9 +43,9 @@ func (c *Client) EnrichTransaction(enrichmentReq EnrichmentRequest) (enrichment 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Request(req)
 	if err != nil {
 		return
 	}
@@ -47,7 +54,7 @@ func (c *Client) EnrichTransaction(enrichmentReq EnrichmentRequest) (enrichment 
 	return
 }
 
-func (c *Client) EnrichTransactionCollection(enrichmentReq []EnrichmentRequest) (enrichment []interface{}, err error) {
+func (c *internalClient) EnrichTransactionCollection(enrichmentReq []EnrichmentRequest) (enrichment []EnrichmentResponse, err error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
 		return
@@ -65,7 +72,7 @@ func (c *Client) EnrichTransactionCollection(enrichmentReq []EnrichmentRequest) 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Request(req)
 	if err != nil {
 		return
 	}
@@ -74,7 +81,7 @@ func (c *Client) EnrichTransactionCollection(enrichmentReq []EnrichmentRequest) 
 	return
 }
 
-func (c *Client) EnrichmentStatus(ID string) (status EnrichmentCollectionStatus, err error) {
+func (c *internalClient) EnrichmentStatus(ID string) (status EnrichmentCollectionStatus, err error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
 		fmt.Sprintf("https://api.xyo.financial/v1/ai/finance/enrichment/transactions/status/%s", ID),
@@ -88,7 +95,7 @@ func (c *Client) EnrichmentStatus(ID string) (status EnrichmentCollectionStatus,
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Request(req)
 	if err != nil {
 		return "", err
 	}

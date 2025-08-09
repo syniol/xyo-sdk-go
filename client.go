@@ -9,31 +9,41 @@ type ClientConfig struct {
 	APIKey string
 }
 
-type Client struct {
-	httpClient *http.Client
+type Client interface {
+	Health() error
+}
+
+type httpClient struct {
+	Request func(req *http.Request) (*http.Response, error)
+}
+
+type internalClient struct {
+	httpClient *httpClient
 	config     *ClientConfig
 }
 
-func NewClient(opt *ClientConfig) *Client {
-	return &Client{
-		httpClient: http.DefaultClient,
-		config:     opt,
+func NewClient(opt *ClientConfig) Client {
+	return &internalClient{
+		httpClient: &httpClient{
+			Request: http.DefaultClient.Do,
+		},
+		config: opt,
 	}
 }
 
-func (c *Client) Health() (err error) {
+func (c *internalClient) Health() error {
 	req, err := http.NewRequest(
 		http.MethodGet,
 		"https://api.xyo.financial/healthz",
 		nil,
 	)
 	if err != nil {
-		return
+		return err
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Request(req)
 	if err != nil {
-		return
+		return err
 	}
 
 	if resp.StatusCode == http.StatusOK {
