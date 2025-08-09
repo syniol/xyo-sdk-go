@@ -32,6 +32,12 @@ const (
 	EnrichmentCollectionStatusPending EnrichmentCollectionStatus = "PENDING"
 )
 
+type Enrichment interface {
+	EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error)
+	EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
+	EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error)
+}
+
 func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {

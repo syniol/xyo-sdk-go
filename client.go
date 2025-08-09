@@ -11,6 +11,8 @@ type ClientConfig struct {
 
 type Client interface {
 	Health() error
+
+	Enrichment
 }
 
 type httpClient struct {
