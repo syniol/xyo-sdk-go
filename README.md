@@ -1,9 +1,11 @@
 # XYO Financial SDK Go (Golang)
 ![workflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/makefile.yml/badge.svg)
 
+This is an official SDK of XYO Financial for Go (Golang) Programming Language. The minimum requirement is version: `1.18`.
 
-## Quick Start
-You will need to have your API Key to create a client.
+
+## Quickstart Guide
+Client is an entry point to use the SDK. You need a valid API Key obtainable from https://xyo.financial/dashboard
 
 ```go
 package main
@@ -18,7 +20,7 @@ import (
 
 func main() {
 	client := xyo.NewClient(&xyo.ClientConfig{
-		APIKey: "ghjdasd7321312ghjhgdsahjdf/dasdasuit34324e3274gdsa",
+		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
 	})
 
 	resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
