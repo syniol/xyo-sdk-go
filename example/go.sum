@@ -2,3 +2,5 @@ github.com/syniol/xyo-sdk-go v0.3.0 h1:hVMvnwKDEKQOtgEUz0au9vc0zV51Qa4QMMf9qWqDO
 github.com/syniol/xyo-sdk-go v0.3.0/go.mod h1:0Trdljz307OR1yhaJ/05fiSZyKfgGQHk9b8Cndob4hQ=
 github.com/syniol/xyo-sdk-go v0.4.0 h1:fAKlE+h7TFMHa6Qy6KxFG0KmWF1EhgOWIwxRkGoMCV8=
 github.com/syniol/xyo-sdk-go v0.4.0/go.mod h1:0Trdljz307OR1yhaJ/05fiSZyKfgGQHk9b8Cndob4hQ=
+github.com/syniol/xyo-sdk-go v1.0.0 h1:BQI3S8rogeKK7NiLAUT7QYil3vKUY7J5R83Dq63T8Qg=
+github.com/syniol/xyo-sdk-go v1.0.0/go.mod h1:0Trdljz307OR1yhaJ/05fiSZyKfgGQHk9b8Cndob4hQ=
