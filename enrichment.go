@@ -51,7 +51,7 @@ func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*E
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		"https://api.xyo.financial/v1/ai/finance/enrichment/transaction",
+		fmt.Sprintf("%s/v1/ai/finance/enrichment/transaction", ApiBasePath),
 		bytes.NewReader(requestBody),
 	)
 	if err != nil {
@@ -85,7 +85,7 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*Enrichment
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		"https://api.xyo.financial/v1/ai/finance/enrichment/transactions",
+		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions", ApiBasePath),
 		bytes.NewReader(requestBody),
 	)
 	if err != nil {
@@ -116,7 +116,7 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*Enrichment
 func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
-		fmt.Sprintf("https://api.xyo.financial/v1/ai/finance/enrichment/transactions/status/%s", ID),
+		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions/status/%s", ApiBasePath, ID),
 		nil,
 	)
 	if err != nil {

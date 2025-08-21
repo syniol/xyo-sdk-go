@@ -4,6 +4,8 @@ import (
 	"net/http"
 )
 
+const ApiBasePath string = "https://api.xyo.financial"
+
 type ClientConfig struct {
 	APIKey string
 }
