@@ -1,17 +1,16 @@
 package xyo
 
 import (
-	"fmt"
 	"net/http"
 )
+
+const ApiBasePath string = "https://api.xyo.financial"
 
 type ClientConfig struct {
 	APIKey string
 }
 
 type Client interface {
-	Health() error
-
 	Enrichment
 }
 
@@ -33,28 +32,4 @@ func NewClient(opt *ClientConfig) Client {
 		},
 		config: opt,
 	}
-}
-
-// Health is an indicator of overall API Status
-// This could be done before sending a request or unusual response from API
-func (c *internalClient) Health() error {
-	req, err := http.NewRequest(
-		http.MethodGet,
-		"https://api.xyo.financial/healthz",
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.httpClient.request(req)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode == http.StatusOK {
-		return nil
-	}
-
-	return fmt.Errorf("health check failed with status code %d", resp.StatusCode)
 }

@@ -1,0 +1,5 @@
+.gitattributes export-ignore
+.github export-ignore
+deploy export-ignore
+Makefile export-ignore
+*_test.go export-ignore
