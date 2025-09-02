@@ -7,11 +7,19 @@ import (
 	"net/http"
 )
 
+// EnrichmentRequest is a request data structure used for single and collection enrichment
+// Content is a maximum of 128 characters long payment description
+// CountryCode ISO 3166-1 alpha-2 (Two characters format)
 type EnrichmentRequest struct {
 	Content     string `json:"content"`
 	CountryCode string `json:"countryCode"`
 }
 
+// EnrichmentResponse is a result of payment transaction enrichment
+// Merchant is a name of merchant
+// Description A brief description about the merchant
+// Categories any type of categories fitting the description of the Merchant
+// Logo is base64 encoded png or jpeg representing the logo of Merchant
 type EnrichmentResponse struct {
 	Merchant    string   `json:"merchant"`
 	Description string   `json:"description"`
@@ -19,11 +27,17 @@ type EnrichmentResponse struct {
 	Logo        string   `json:"logo"`
 }
 
+// EnrichTransactionCollectionResponse is a result of bulk enrichment
+// ID is a work ID for an enrichment request
+// Link is a downloadable tar.gz Compressed file
 type EnrichTransactionCollectionResponse struct {
 	ID   string `json:"id"`
 	Link string `json:"link"`
 }
 
+// EnrichmentCollectionStatus represents the status of EnrichTransactionCollectionResponse
+// Currently there are three possible associated enum values for the status
+// READY, PENDING, FAILED
 type EnrichmentCollectionStatus string
 
 const (
@@ -37,12 +51,20 @@ type EnrichmentCollectionStatusResponse struct {
 }
 
 type Enrichment interface {
+	// EnrichTransaction should be used for a single transaction enrichment
 	EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error)
+
+	// EnrichTransactionCollection should be used for bulk enrichment request
+	// Unlike EnrichTransaction this method won;t produce the enrichment result instantly
+	// However, it allows you to download the enrichment results when it becomes available using download link in response
+	// Status of Downloadable enrichment result can be queried using EnrichTransactionCollectionStatus
 	EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
+
+	// EnrichTransactionCollectionStatus returns the status of request from EnrichTransactionCollection
+	// ID is the value of ID taken from EnrichTransactionCollection response
 	EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error)
 }
 
-// EnrichTransaction will generate enriched transaction
 func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
@@ -76,7 +98,6 @@ func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*E
 	return &enrichmentResponse, err
 }
 
-// EnrichTransactionCollection will produce an ID and a download link for bulk transaction enrichment
 func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
@@ -111,8 +132,6 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*Enrichment
 	return &enrichTransactionCollectionResponse, err
 }
 
-// EnrichTransactionCollectionStatus will return the status of bulk transactions enrichment request with a given ID
-// Check EnrichmentCollectionStatus for a possible Status Value
 func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
