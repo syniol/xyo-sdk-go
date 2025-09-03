@@ -10,14 +10,17 @@ import (
 
 func TestEnrichTransaction(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
-		client := &internalClient{
-			httpClient: &httpClient{
-				request: func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusBadRequest,
-					}, nil
-				}},
-			config: &ClientConfig{APIKey: "xsadsdsadada"},
+		client := &client{
+			config: &ClientConfig{
+				APIKey: "xsadsdsadada",
+				httpClient: &httpClient{
+					request: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							StatusCode: http.StatusBadRequest,
+						}, nil
+					},
+				},
+			},
 		}
 
 		_, err := client.EnrichTransaction(&EnrichmentRequest{
@@ -40,15 +43,18 @@ func TestEnrichTransaction(t *testing.T) {
 		sxxss, _ := json.Marshal(sss)
 		stringReadCloser := io.NopCloser(bytes.NewReader(sxxss))
 
-		client := &internalClient{
-			httpClient: &httpClient{
-				request: func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						Body:       stringReadCloser,
-						StatusCode: http.StatusOK,
-					}, nil
-				}},
-			config: &ClientConfig{APIKey: "xsadsdsadada"},
+		client := &client{
+			config: &ClientConfig{
+				APIKey: "xsadsdsadada",
+				httpClient: &httpClient{
+					request: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							Body:       stringReadCloser,
+							StatusCode: http.StatusOK,
+						}, nil
+					},
+				},
+			},
 		}
 
 		_, err := client.EnrichTransaction(&EnrichmentRequest{
@@ -63,14 +69,17 @@ func TestEnrichTransaction(t *testing.T) {
 
 func TestEnrichTransactionCollection(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
-		client := &internalClient{
-			httpClient: &httpClient{
-				request: func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusBadRequest,
-					}, nil
-				}},
-			config: &ClientConfig{APIKey: "xsadsdsadada"},
+		client := &client{
+			config: &ClientConfig{
+				APIKey: "xsadsdsadada",
+				httpClient: &httpClient{
+					request: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							StatusCode: http.StatusBadRequest,
+						}, nil
+					},
+				},
+			},
 		}
 
 		_, err := client.EnrichTransactionCollection([]*EnrichmentRequest{
@@ -95,15 +104,18 @@ func TestEnrichTransactionCollection(t *testing.T) {
 		}
 		serialisedPayload, _ := json.Marshal(payloadMap)
 
-		client := &internalClient{
-			httpClient: &httpClient{
-				request: func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						Body:       io.NopCloser(bytes.NewReader(serialisedPayload)),
-						StatusCode: http.StatusOK,
-					}, nil
-				}},
-			config: &ClientConfig{APIKey: "xsadsdsadada"},
+		client := &client{
+			config: &ClientConfig{
+				APIKey: "xsadsdsadada",
+				httpClient: &httpClient{
+					request: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							Body:       io.NopCloser(bytes.NewReader(serialisedPayload)),
+							StatusCode: http.StatusOK,
+						}, nil
+					},
+				},
+			},
 		}
 
 		_, err := client.EnrichTransactionCollection([]*EnrichmentRequest{
@@ -124,14 +136,17 @@ func TestEnrichTransactionCollection(t *testing.T) {
 
 func TestEnrichTransactionCollectionStatus(t *testing.T) {
 	t.Run("negative", func(t *testing.T) {
-		client := &internalClient{
-			httpClient: &httpClient{
-				request: func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						StatusCode: http.StatusBadRequest,
-					}, nil
-				}},
-			config: &ClientConfig{APIKey: "xsadsdsadada"},
+		client := &client{
+			config: &ClientConfig{
+				APIKey: "xsadsdsadada",
+				httpClient: &httpClient{
+					request: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							StatusCode: http.StatusBadRequest,
+						}, nil
+					},
+				},
+			},
 		}
 
 		_, err := client.EnrichTransactionCollectionStatus("asdsd")
@@ -146,15 +161,18 @@ func TestEnrichTransactionCollectionStatus(t *testing.T) {
 		}
 		serialisedPayload, _ := json.Marshal(payloadMap)
 
-		client := &internalClient{
-			httpClient: &httpClient{
-				request: func(req *http.Request) (*http.Response, error) {
-					return &http.Response{
-						Body:       io.NopCloser(bytes.NewReader(serialisedPayload)),
-						StatusCode: http.StatusOK,
-					}, nil
-				}},
-			config: &ClientConfig{APIKey: "xsadsdsadada"},
+		client := &client{
+			config: &ClientConfig{
+				APIKey: "xsadsdsadada",
+				httpClient: &httpClient{
+					request: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							Body:       io.NopCloser(bytes.NewReader(serialisedPayload)),
+							StatusCode: http.StatusOK,
+						}, nil
+					},
+				},
+			},
 		}
 
 		actual, err := client.EnrichTransactionCollectionStatus("72c037df-d0d3-43ee-9470-323ff35a2e50")

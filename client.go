@@ -7,7 +7,8 @@ import (
 const ApiBasePath string = "https://api.xyo.financial"
 
 type ClientConfig struct {
-	APIKey string
+	APIKey     string
+	httpClient *httpClient
 }
 
 type Client interface {
@@ -18,18 +19,19 @@ type httpClient struct {
 	request func(req *http.Request) (*http.Response, error)
 }
 
-type internalClient struct {
-	httpClient *httpClient
-	config     *ClientConfig
+type client struct {
+	config *ClientConfig
 }
 
 // NewClient will accept ClientConfig struct where APIKey is defined
 // Client is required to access Enrichment Services through SDK
 func NewClient(opt *ClientConfig) Client {
-	return &internalClient{
-		httpClient: &httpClient{
-			request: http.DefaultClient.Do,
+	return &client{
+		config: &ClientConfig{
+			APIKey: opt.APIKey,
+			httpClient: &httpClient{
+				request: http.DefaultClient.Do,
+			},
 		},
-		config: opt,
 	}
 }
