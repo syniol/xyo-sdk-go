@@ -42,7 +42,7 @@ type EnrichmentCollectionStatus string
 
 const (
 	EnrichmentCollectionStatusReady   EnrichmentCollectionStatus = "READY"
-	EnrichmentCollectionStatusFailure EnrichmentCollectionStatus = "FAILED"
+	EnrichmentCollectionStatusFailed  EnrichmentCollectionStatus = "FAILED"
 	EnrichmentCollectionStatusPending EnrichmentCollectionStatus = "PENDING"
 )
 
@@ -65,7 +65,7 @@ type Enrichment interface {
 	EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error)
 }
 
-func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
+func (c *client) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*E
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
 
-	resp, err := c.httpClient.request(req)
+	resp, err := c.config.httpClient.request(req)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (c *internalClient) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*E
 	return &enrichmentResponse, err
 }
 
-func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
+func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*Enrichment
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
 
-	resp, err := c.httpClient.request(req)
+	resp, err := c.config.httpClient.request(req)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (c *internalClient) EnrichTransactionCollection(enrichmentReq []*Enrichment
 	return &enrichTransactionCollectionResponse, err
 }
 
-func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error) {
+func (c *client) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
 		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions/status/%s", ApiBasePath, ID),
@@ -146,7 +146,7 @@ func (c *internalClient) EnrichTransactionCollectionStatus(ID string) (Enrichmen
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
 
-	resp, err := c.httpClient.request(req)
+	resp, err := c.config.httpClient.request(req)
 	if err != nil {
 		return "", err
 	}
