@@ -15,7 +15,7 @@ RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/ins
     && golangci-lint --version
 
 # Running linting and Tests
-RUN golangci-lint run ./... && go test ./... -v
+RUN golangci-lint run ./... -v && go test ./... -v
 
 # Testing import and instantiation with an example package
 WORKDIR /var/usr/local/xyo/sdk/example
