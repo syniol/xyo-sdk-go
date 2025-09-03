@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/syniol/xyo-sdk-go/internal"
 	"net/http"
 )
 
@@ -79,9 +80,8 @@ func (c *client) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*Enrichmen
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.config.APIKey))
+
+	internal.MandatoryAPIHeaders(req, c.config.APIKey)
 
 	resp, err := c.config.httpClient.request(req)
 	if err != nil {
@@ -113,9 +113,7 @@ func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest)
 		return nil, err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
+	internal.MandatoryAPIHeaders(req, c.config.APIKey)
 
 	resp, err := c.config.httpClient.request(req)
 	if err != nil {
@@ -142,9 +140,7 @@ func (c *client) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollect
 		return "", err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.config.APIKey)
+	internal.MandatoryAPIHeaders(req, c.config.APIKey)
 
 	resp, err := c.config.httpClient.request(req)
 	if err != nil {

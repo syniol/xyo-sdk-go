@@ -9,10 +9,10 @@ import (
 )
 
 func TestEnrichTransaction(t *testing.T) {
-	t.Run("negative", func(t *testing.T) {
+	t.Run("when status code is not 200 (OK)", func(t *testing.T) {
 		client := &client{
 			config: &ClientConfig{
-				APIKey: "xsadsdsadada",
+				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
 				httpClient: &httpClient{
 					request: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -32,20 +32,20 @@ func TestEnrichTransaction(t *testing.T) {
 		}
 	})
 
-	t.Run("positive", func(t *testing.T) {
-		sss := map[string]interface{}{
-			"merchant":    "ssdsdsa",
-			"description": "FUCK O",
-			"logo":        "cdafdafa",
-			"categories":  []string{"ssdsdsa"},
+	t.Run("when status code is 200 (OK)", func(t *testing.T) {
+		mockedEnrichmentResponse := map[string]interface{}{
+			"merchant":    "Syniol Limited",
+			"description": "Software and Cloud Platform Consultancy",
+			"logo":        "base64/png;31233232dsdsdaaersdasjhdsfi",
+			"categories":  []string{"Tech"},
 		}
 
-		sxxss, _ := json.Marshal(sss)
-		stringReadCloser := io.NopCloser(bytes.NewReader(sxxss))
+		jsonMockedEnrichmentResponse, _ := json.Marshal(mockedEnrichmentResponse)
+		stringReadCloser := io.NopCloser(bytes.NewReader(jsonMockedEnrichmentResponse))
 
 		client := &client{
 			config: &ClientConfig{
-				APIKey: "xsadsdsadada",
+				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
 				httpClient: &httpClient{
 					request: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -68,10 +68,10 @@ func TestEnrichTransaction(t *testing.T) {
 }
 
 func TestEnrichTransactionCollection(t *testing.T) {
-	t.Run("negative", func(t *testing.T) {
+	t.Run("when status code is not 200 (OK)", func(t *testing.T) {
 		client := &client{
 			config: &ClientConfig{
-				APIKey: "xsadsdsadada",
+				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
 				httpClient: &httpClient{
 					request: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -97,7 +97,7 @@ func TestEnrichTransactionCollection(t *testing.T) {
 		}
 	})
 
-	t.Run("positive", func(t *testing.T) {
+	t.Run("when status code is 200 (OK)", func(t *testing.T) {
 		payloadMap := map[string]interface{}{
 			"id":   "72c037df-d0d3-43ee-9470-323ff35a2e50",
 			"link": "https://api.xyo.financial/ai/transactions/download/72c037df-d0d3-43ee-9470-323ff35a2e50.tar.gz",
@@ -106,7 +106,7 @@ func TestEnrichTransactionCollection(t *testing.T) {
 
 		client := &client{
 			config: &ClientConfig{
-				APIKey: "xsadsdsadada",
+				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
 				httpClient: &httpClient{
 					request: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -135,10 +135,10 @@ func TestEnrichTransactionCollection(t *testing.T) {
 }
 
 func TestEnrichTransactionCollectionStatus(t *testing.T) {
-	t.Run("negative", func(t *testing.T) {
+	t.Run("when status code is not 200 (OK)", func(t *testing.T) {
 		client := &client{
 			config: &ClientConfig{
-				APIKey: "xsadsdsadada",
+				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
 				httpClient: &httpClient{
 					request: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -155,7 +155,7 @@ func TestEnrichTransactionCollectionStatus(t *testing.T) {
 		}
 	})
 
-	t.Run("positive", func(t *testing.T) {
+	t.Run("when status code is 200 (OK)", func(t *testing.T) {
 		payloadMap := map[string]interface{}{
 			"status": EnrichmentCollectionStatusReady,
 		}
@@ -163,7 +163,7 @@ func TestEnrichTransactionCollectionStatus(t *testing.T) {
 
 		client := &client{
 			config: &ClientConfig{
-				APIKey: "xsadsdsadada",
+				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
 				httpClient: &httpClient{
 					request: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -181,7 +181,7 @@ func TestEnrichTransactionCollectionStatus(t *testing.T) {
 		}
 
 		if actual != EnrichmentCollectionStatusReady {
-			t.Error("expected a status: 'READY'")
+			t.Errorf("expected a status: '%s'", EnrichmentCollectionStatusReady)
 		}
 	})
 }
