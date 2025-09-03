@@ -45,6 +45,8 @@ package main
 import (
 	"log"
 	"fmt"
+
+	"github.com/syniol/xyo-sdk-go"
 )
 
 func main() {
@@ -68,6 +70,8 @@ package main
 import (
 	"log"
 	"fmt"
+
+	"github.com/syniol/xyo-sdk-go"
 )
 
 func main() {
