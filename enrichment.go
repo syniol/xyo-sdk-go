@@ -74,7 +74,7 @@ func (c *client) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*Enrichmen
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		fmt.Sprintf("%s/v1/ai/finance/enrichment/transaction", ApiBasePath),
+		fmt.Sprintf("%s/v1/ai/finance/enrichment/transaction", c.config.apiBaseURL),
 		bytes.NewReader(requestBody),
 	)
 	if err != nil {
@@ -106,7 +106,7 @@ func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest)
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions", ApiBasePath),
+		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions", c.config.apiBaseURL),
 		bytes.NewReader(requestBody),
 	)
 	if err != nil {
@@ -133,7 +133,7 @@ func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest)
 func (c *client) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error) {
 	req, err := http.NewRequest(
 		http.MethodPost,
-		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions/status/%s", ApiBasePath, ID),
+		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions/status/%s", c.config.apiBaseURL, ID),
 		nil,
 	)
 	if err != nil {

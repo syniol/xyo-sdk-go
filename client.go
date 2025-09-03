@@ -4,11 +4,12 @@ import (
 	"net/http"
 )
 
-const ApiBasePath string = "https://api.xyo.financial"
+const apiBasePath string = "https://api.xyo.financial"
 
 type ClientConfig struct {
 	APIKey     string
 	httpClient *httpClient
+	apiBaseURL string
 }
 
 type Client interface {
@@ -32,6 +33,7 @@ func NewClient(opt *ClientConfig) Client {
 			httpClient: &httpClient{
 				request: http.DefaultClient.Do,
 			},
+			apiBaseURL: apiBasePath,
 		},
 	}
 }
