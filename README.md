@@ -12,6 +12,12 @@ available to connect to and access the Enrichment services.
 
 
 ## Quickstart Guide
+First you need to install the XYO SDK for Go (Golang) ecosystem via [GitHub](https://github.com/syniol/xyo-sdk-go).
+
+```shell
+go get github.com/syniol/xyo-sdk-go
+```
+
 Client is an entry point to use the SDK. You need a valid API Key obtainable from https://xyo.financial/dashboard
 
 ```go
@@ -29,16 +35,74 @@ func main() {
 	client := xyo.NewClient(&xyo.ClientConfig{
 		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
 	})
+}
+```
 
-	resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
-		Content:     "COSTA PICKUP",
-		CountryCode: "GB",
+__Enrich a Single Payment Transaction__:
+```go
+package main
+
+import (
+	"log"
+	"fmt"
+)
+
+func main() {
+    resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
+        Content:     "COSTA PICKUP",
+        CountryCode: "GB",
+    })
+    log.Fatal(err)
+    
+    fmt.Println(resp.Merchant)
+    fmt.Println(resp.Description)
+    fmt.Println(resp.Categories)
+    fmt.Println(resp.Logo)
+}
+```
+
+__Enrich Payment Transaction Collection _(Bulk Enrichment)___:
+```go
+package main
+
+import (
+	"log"
+	"fmt"
+)
+
+func main() {
+	resp, err := client.EnrichTransactionCollection([]*xyo.EnrichmentRequest{
+		{
+			Content: 'Costa PickUp',
+			CountryCode: 'GB',
+		},
+		{
+			Content: 'STRBUKS GREENWICH',
+			CountryCode: 'GB',
+		},
 	})
 	log.Fatal(err)
 
-	jsonResp, err := json.Marshal(resp)
+	fmt.Println(resp.ID)
+	fmt.Println(resp.Link)
+}
+```
+
+__Payment Transaction Collection Status__:
+```go
+package main
+
+import (
+	"log"
+	"fmt"
+)
+
+func main() {
+	resp, err := client.EnrichTransactionCollectionStatus(enrichTransactionCollectionResponse.ID)
 	log.Fatal(err)
-	fmt.Println(jsonResp)
+
+	// EnrichmentCollectionStatus enum: READY, PENDING, FAILED
+	fmt.Println(resp)
 }
 ```
 
