@@ -38,6 +38,8 @@ func TestEnrichTransaction(t *testing.T) {
 			"description": "Software and Cloud Platform Consultancy",
 			"logo":        "base64/png;31233232dsdsdaaersdasjhdsfi",
 			"categories":  []string{"Tech"},
+			"location":    "United Kingdom, England",
+			"address":     "London, O2",
 		}
 
 		jsonMockedEnrichmentResponse, _ := json.Marshal(mockedEnrichmentResponse)

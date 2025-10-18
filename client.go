@@ -6,7 +6,9 @@ import (
 
 const apiBasePath string = "https://api.xyo.financial"
 
+// ClientConfig should be used to for a Client creation via NewClient method
 type ClientConfig struct {
+	// APIKey can be obtained from client dashboard located at: https://xyo.financial/dashboard
 	APIKey     string
 	httpClient *httpClient
 	apiBaseURL string
