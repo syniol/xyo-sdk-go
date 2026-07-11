@@ -136,7 +136,7 @@ func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest)
 // ID is the value of ID taken from EnrichTransactionCollection response
 func (c *client) EnrichTransactionCollectionStatus(ID string) (EnrichmentCollectionStatus, error) {
 	req, err := http.NewRequest(
-		http.MethodPost,
+		http.MethodGet,
 		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions/status/%s", c.config.apiBaseURL, ID),
 		nil,
 	)
