@@ -38,7 +38,7 @@ func main() {
 }
 ```
 
-__Enrich a Single Payment Transaction__:
+### Enrich a Single Payment Transaction
 ```go
 package main
 
@@ -65,7 +65,7 @@ func main() {
 }
 ```
 
-__Enrich Payment Transaction Collection _(Bulk Enrichment)___:
+### Enrich Payment Transaction Collection <sup><i>(Bulk Enrichment)</i></sup>
 ```go
 package main
 
@@ -94,7 +94,7 @@ func main() {
 }
 ```
 
-__Payment Transaction Collection Status__:
+### Payment Transaction Collection Status <sup><i>(Bulk Enrichment Status)</i></sup>
 ```go
 package main
 
@@ -115,5 +115,5 @@ func main() {
 ```
 
 
-## License
-Copyright © 2025 Syniol Limited. All rights reserved. See [LICENSE](LICENSE).
+### License
+Copyright &copy; Syniol Limited. All rights reserved. See [LICENSE](LICENSE).
