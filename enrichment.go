@@ -68,7 +68,7 @@ type Enrichment interface {
 func apiError(resp *http.Response, op string) error {
 	var body string
 	if resp.Body != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		body = string(bytes.TrimSpace(b))
 	}
@@ -104,7 +104,7 @@ func (c *client) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*Enrichmen
 	if resp.StatusCode != http.StatusOK {
 		return nil, apiError(resp, "enrich transaction")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result EnrichmentResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -143,7 +143,7 @@ func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest)
 	if resp.StatusCode != http.StatusOK {
 		return nil, apiError(resp, "enrich transaction collection")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result EnrichTransactionCollectionResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -175,7 +175,7 @@ func (c *client) EnrichTransactionCollectionStatus(id string) (EnrichmentCollect
 	if resp.StatusCode != http.StatusOK {
 		return "", apiError(resp, "enrich transaction collection status")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result enrichmentCollectionStatusResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {

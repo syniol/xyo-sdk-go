@@ -118,11 +118,8 @@ func main() {
 
 
 ## Example Application
-A working example is available in the [`example/`](example/) directory. To run it:
-```sh
-cd example
-go run main.go
-```
+
+The [`example/`](example/) directory contains a minimal smoke test that verifies the SDK imports and the client instantiates correctly. For a complete usage example showing real API calls, see the [Quickstart Guide](#quickstart-guide) above.
 
 
 ## License

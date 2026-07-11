@@ -2,26 +2,16 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/syniol/xyo-sdk-go"
 )
 
 func main() {
-	client := xyo.NewClient(&xyo.ClientConfig{
-		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
+	// Verify the SDK can be imported and the client can be instantiated.
+	// For a full usage example see the README.
+	_ = xyo.NewClient(&xyo.ClientConfig{
+		APIKey: "example-api-key",
 	})
 
-	resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
-		Content:     "COSTA PICKUP",
-		CountryCode: "GB",
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Merchant:   ", resp.Merchant)
-	fmt.Println("Description:", resp.Description)
-	fmt.Println("Categories: ", resp.Categories)
-	fmt.Println("Logo:       ", resp.Logo)
+	fmt.Println("Successfully imported and instantiated the XYO Client")
 }
