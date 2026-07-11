@@ -24,10 +24,6 @@ Client is an entry point to use the SDK. You need a valid API Key obtainable fro
 package main
 
 import (
-	"encoding/json"
-	"log"
-	"fmt"
-
 	"github.com/syniol/xyo-sdk-go"
 )
 
@@ -35,6 +31,7 @@ func main() {
 	client := xyo.NewClient(&xyo.ClientConfig{
 		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
 	})
+	_ = client // client is now ready to use
 }
 ```
 
@@ -43,25 +40,31 @@ func main() {
 package main
 
 import (
-	"log"
 	"fmt"
+	"log"
 
 	"github.com/syniol/xyo-sdk-go"
 )
 
 func main() {
-    resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
-        Content:     "COSTA PICKUP",
-        CountryCode: "GB",
-    })
-    log.Fatal(err)
-    
-    fmt.Println(resp.Merchant)
-    fmt.Println(resp.Description)
-    fmt.Println(resp.Categories)
-    fmt.Println(resp.Logo)
-    fmt.Println(resp.Location)
-    fmt.Println(resp.Address)
+	client := xyo.NewClient(&xyo.ClientConfig{
+		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
+	})
+
+	resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
+		Content:     "COSTA PICKUP",
+		CountryCode: "GB",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	
+	fmt.Println(resp.Merchant)
+	fmt.Println(resp.Description)
+	fmt.Println(resp.Categories)
+	fmt.Println(resp.Logo)
+	fmt.Println(resp.Location)
+	fmt.Println(resp.Address)
 }
 ```
 
@@ -70,24 +73,30 @@ func main() {
 package main
 
 import (
-	"log"
 	"fmt"
+	"log"
 
 	"github.com/syniol/xyo-sdk-go"
 )
 
 func main() {
+	client := xyo.NewClient(&xyo.ClientConfig{
+		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
+	})
+
 	resp, err := client.EnrichTransactionCollection([]*xyo.EnrichmentRequest{
 		{
-			Content: 'Costa PICKUP',
-			CountryCode: 'GB',
+			Content:     "Costa PICKUP",
+			CountryCode: "GB",
 		},
 		{
-			Content: 'STRBUKS GREENWICH',
-			CountryCode: 'GB',
+			Content:     "STRBUKS GREENWICH",
+			CountryCode: "GB",
 		},
 	})
-	log.Fatal(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Println(resp.ID)
 	fmt.Println(resp.Link)
@@ -99,18 +108,24 @@ func main() {
 package main
 
 import (
-	"log"
 	"fmt"
+	"log"
+
+	"github.com/syniol/xyo-sdk-go"
 )
 
 func main() {
-	resp, err := client.EnrichTransactionCollectionStatus(
-		enrichTransactionCollectionResponse.ID,
-    )
-	log.Fatal(err)
+	client := xyo.NewClient(&xyo.ClientConfig{
+		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
+	})
+
+	status, err := client.EnrichTransactionCollectionStatus("batch-123")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// EnrichmentCollectionStatus enum: READY, PENDING, FAILED
-	fmt.Println(resp)
+	fmt.Println(status)
 }
 ```
 
