@@ -4,4 +4,4 @@
 2. git tag v1.x.x
 3. git push origin v1.x.x
 4. Monitor __Actions__ for a successful pipeline run 
-5. Create a new release through GitHub Web interface
+5. Create a new release through the GitHub Web interface
