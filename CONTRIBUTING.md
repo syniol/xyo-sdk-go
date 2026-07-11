@@ -1,6 +1,6 @@
 # Contributing to XYO.Financial Go SDK
 
-First of all, thank you for taking the time to contribute!
+First, thank you for taking the time to contribute.
 
 ## Development Setup
 
@@ -37,7 +37,6 @@ First of all, thank you for taking the time to contribute!
 1. Push all the new changes to the `main` branch.
 2. `git tag v1.x.x`
 3. `git push origin v1.x.x`
-4. Monitor __Actions__ for a successful pipeline run.
-5. Create a new release through the GitHub Web interface.
+4. The `release.yml` pipeline will automatically run tests, generate artifacts (SBOM, checksums, attestation), and create a GitHub Release.
 
-Thank you!
+Thank you
