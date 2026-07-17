@@ -1,5 +1,5 @@
 # XYO.Financial SDK for Go
-![workflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/makefile.yml/badge.svg)    ![workflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/release.yml/badge.svg)
+![workflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/makefile.yml/badge.svg?branch=main)    ![x[Dworkflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/release.yml/badge.svg)
 
 <p align="center">
     <a href="https://xyo.financial" target="blank"><img alt="Go Gopher Mascot" width="50%" src="https://github.com/syniol/xyo-sdk-go/blob/main/docs/mascot.png?raw=true" /></a>
@@ -25,6 +25,7 @@ go get github.com/syniol/xyo-sdk-go
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -39,7 +40,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
+	resp, err := client.EnrichTransaction(context.Background(), &xyo.EnrichmentRequest{
 		Content:     "COSTA PICKUP",
 		CountryCode: "GB",
 	})
@@ -61,6 +62,7 @@ func main() {
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -75,7 +77,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	resp, err := client.EnrichTransactionCollection([]*xyo.EnrichmentRequest{
+	resp, err := client.EnrichTransactionCollection(context.Background(), []*xyo.EnrichmentRequest{
 		{
 			Content:     "Costa PICKUP",
 			CountryCode: "GB",
@@ -99,6 +101,7 @@ func main() {
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -113,7 +116,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	status, err := client.EnrichTransactionCollectionStatus("batch-123")
+	status, err := client.EnrichTransactionCollectionStatus(context.Background(), "batch-123")
 	if err != nil {
 		log.Fatal(err)
 	}

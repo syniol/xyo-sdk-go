@@ -28,15 +28,10 @@ type Client interface {
 	Enrichment
 }
 
-// httpClient wraps the transport function to allow injection in tests.
-type httpClient struct {
-	request func(req *http.Request) (*http.Response, error)
-}
-
 type client struct {
 	apiKey     string
 	apiBaseURL string
-	http       *httpClient
+	http       *http.Client
 }
 
 // NewClient creates a new XYO API client from the provided configuration.
@@ -64,6 +59,6 @@ func NewClient(config *ClientConfig) (Client, error) {
 	return &client{
 		apiKey:     config.APIKey,
 		apiBaseURL: baseURL,
-		http:       &httpClient{request: httpCl.Do},
+		http:       httpCl,
 	}, nil
 }

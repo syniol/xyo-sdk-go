@@ -2,6 +2,7 @@ package xyo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -58,34 +59,43 @@ type enrichmentCollectionStatusResponse struct {
 
 // Enrichment defines the contract for all XYO transaction enrichment operations.
 type Enrichment interface {
-	EnrichTransaction(req *EnrichmentRequest) (*EnrichmentResponse, error)
-	EnrichTransactionCollection(reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
-	EnrichTransactionCollectionStatus(id string) (EnrichmentCollectionStatus, error)
+	EnrichTransaction(ctx context.Context, req *EnrichmentRequest) (*EnrichmentResponse, error)
+	EnrichTransactionCollection(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
+	EnrichTransactionCollectionStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error)
 }
 
-// apiError reads the response body and returns a formatted error string.
+// apiError reads the response body and attempts to parse it into an *ErrorResponse.
 // It always closes the body.
 func apiError(resp *http.Response, op string) error {
-	var body string
+	var body []byte
 	if resp.Body != nil {
 		defer func() { _ = resp.Body.Close() }()
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		body = string(bytes.TrimSpace(b))
+		body, _ = io.ReadAll(io.LimitReader(resp.Body, 4096))
 	}
-	if body != "" {
-		return fmt.Errorf("xyo: %s: status %d: %s", op, resp.StatusCode, body)
+
+	if len(body) > 0 {
+		var errResp ErrorResponse
+		if err := json.Unmarshal(body, &errResp); err == nil && len(errResp.Errors) > 0 {
+			errResp.HTTPStatusCode = resp.StatusCode
+			return fmt.Errorf("xyo: %s: %w", op, &errResp)
+		}
+		
+		// Fallback for non-JSON or unexpected error payloads
+		return fmt.Errorf("xyo: %s: status %d: %s", op, resp.StatusCode, string(bytes.TrimSpace(body)))
 	}
+
 	return fmt.Errorf("xyo: %s: status %d", op, resp.StatusCode)
 }
 
 // EnrichTransaction enriches a single payment transaction.
-func (c *client) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
+func (c *client) EnrichTransaction(ctx context.Context, enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: enrich transaction: marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest(
+	req, err := http.NewRequestWithContext(
+		ctx,
 		http.MethodPost,
 		fmt.Sprintf("%s/v1/ai/finance/enrichment/transaction", c.apiBaseURL),
 		bytes.NewReader(requestBody),
@@ -96,7 +106,7 @@ func (c *client) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*Enrichmen
 
 	internal.MandatoryAPIHeaders(req, c.apiKey)
 
-	resp, err := c.http.request(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: enrich transaction: %w", err)
 	}
@@ -118,13 +128,14 @@ func (c *client) EnrichTransaction(enrichmentReq *EnrichmentRequest) (*Enrichmen
 // Unlike EnrichTransaction, this method won't produce enrichment results instantly.
 // It returns a job ID and download link; use EnrichTransactionCollectionStatus to
 // poll for completion.
-func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
+func (c *client) EnrichTransactionCollection(ctx context.Context, enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
 	requestBody, err := json.Marshal(enrichmentReq)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: enrich transaction collection: marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest(
+	req, err := http.NewRequestWithContext(
+		ctx,
 		http.MethodPost,
 		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions", c.apiBaseURL),
 		bytes.NewReader(requestBody),
@@ -135,7 +146,7 @@ func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest)
 
 	internal.MandatoryAPIHeaders(req, c.apiKey)
 
-	resp, err := c.http.request(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: enrich transaction collection: %w", err)
 	}
@@ -155,8 +166,9 @@ func (c *client) EnrichTransactionCollection(enrichmentReq []*EnrichmentRequest)
 
 // EnrichTransactionCollectionStatus returns the processing status of a bulk enrichment job.
 // id is the ID returned by EnrichTransactionCollection.
-func (c *client) EnrichTransactionCollectionStatus(id string) (EnrichmentCollectionStatus, error) {
-	req, err := http.NewRequest(
+func (c *client) EnrichTransactionCollectionStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error) {
+	req, err := http.NewRequestWithContext(
+		ctx,
 		http.MethodGet,
 		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions/status/%s", c.apiBaseURL, id),
 		nil,
@@ -167,7 +179,7 @@ func (c *client) EnrichTransactionCollectionStatus(id string) (EnrichmentCollect
 
 	internal.MandatoryAPIHeaders(req, c.apiKey)
 
-	resp, err := c.http.request(req)
+	resp, err := c.http.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("xyo: enrich transaction collection status: %w", err)
 	}
