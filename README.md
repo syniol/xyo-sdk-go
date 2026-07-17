@@ -126,6 +126,37 @@ func main() {
 }
 ```
 
+### Download Payment Transaction Collection Results
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/syniol/xyo-sdk-go"
+)
+
+func main() {
+	client, err := xyo.NewClient(&xyo.ClientConfig{
+		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	results, err := client.DownloadEnrichmentCollection(context.Background(), "https://api.xyo.financial/ai/transactions/download/batch-123.tar.gz")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, result := range results {
+		fmt.Printf("Merchant: %s, Category: %v\n", result.Merchant, result.Categories)
+	}
+}
+```
+
 > Requests that fail at the transport layer, return a non-200 status, or contain an invalid response return an `error`. The `Location` and `Address` fields may be empty strings because the service may return JSON `null`.
 
 
@@ -135,4 +166,6 @@ The [`example/`](example/) directory contains a minimal smoke test that verifies
 
 
 ## License
-Copyright &copy; Syniol Limited. All rights reserved. See [LICENSE](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright &copy; 2025 Syniol Limited.

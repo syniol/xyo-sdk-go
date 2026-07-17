@@ -1,6 +1,9 @@
 package xyo
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -167,6 +170,61 @@ func TestEnrichTransactionCollectionStatus(t *testing.T) {
 		}
 		if actual != EnrichmentCollectionStatusReady {
 			t.Errorf("expected status %q, got %q", EnrichmentCollectionStatusReady, actual)
+		}
+	})
+}
+
+func TestDownloadEnrichmentCollection(t *testing.T) {
+	t.Run("non-200 status returns error", func(t *testing.T) {
+		ts, client := newTestServerAndClient(t, http.MethodGet, "/downloads/123.tar.gz", http.StatusBadRequest, nil)
+		defer ts.Close()
+
+		_, err := client.DownloadEnrichmentCollection(context.Background(), ts.URL+"/downloads/123.tar.gz")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("200 OK streams and decodes tarball", func(t *testing.T) {
+		// Create an in-memory .tar.gz containing one JSON file
+		var buf bytes.Buffer
+		gzw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gzw)
+
+		payload := map[string]interface{}{
+			"merchant":    "Syniol Limited",
+			"description": "Bulk Test",
+		}
+		b, _ := json.Marshal(payload)
+
+		_ = tw.WriteHeader(&tar.Header{
+			Name:     "transaction_0.json",
+			Mode:     0600,
+			Size:     int64(len(b)),
+			Typeflag: tar.TypeReg,
+		})
+		_, _ = tw.Write(b)
+		_ = tw.Close()
+		_ = gzw.Close()
+
+		ts, client := newTestServerAndClient(t, http.MethodGet, "/downloads/123.tar.gz", http.StatusOK, nil)
+		defer ts.Close()
+
+		// Override the test server to return our custom tarball bytes instead of JSON
+		ts.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(buf.Bytes())
+		})
+
+		results, err := client.DownloadEnrichmentCollection(context.Background(), ts.URL+"/downloads/123.tar.gz")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(results) != 1 {
+			t.Fatalf("expected 1 result, got %d", len(results))
+		}
+		if results[0].Merchant != "Syniol Limited" {
+			t.Errorf("expected merchant %q, got %q", "Syniol Limited", results[0].Merchant)
 		}
 	})
 }

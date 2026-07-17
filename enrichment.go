@@ -1,7 +1,9 @@
 package xyo
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -62,6 +64,7 @@ type Enrichment interface {
 	EnrichTransaction(ctx context.Context, req *EnrichmentRequest) (*EnrichmentResponse, error)
 	EnrichTransactionCollection(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
 	EnrichTransactionCollectionStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error)
+	DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error)
 }
 
 // apiError reads the response body and attempts to parse it into an *ErrorResponse.
@@ -195,4 +198,56 @@ func (c *client) EnrichTransactionCollectionStatus(ctx context.Context, id strin
 	}
 
 	return result.Status, nil
+}
+
+// DownloadEnrichmentCollection downloads and decodes a bulk enrichment result tarball.
+// It performs streaming decompression and unmarshaling.
+func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("xyo: download enrichment collection: build request: %w", err)
+	}
+
+	internal.MandatoryAPIHeaders(req, c.apiKey)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("xyo: download enrichment collection: %w", err)
+	}
+	
+	if resp.StatusCode != http.StatusOK {
+		return nil, apiError(resp, "download enrichment collection")
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	gzReader, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("xyo: download enrichment collection: gzip stream: %w", err)
+	}
+	defer func() { _ = gzReader.Close() }()
+
+	tarReader := tar.NewReader(gzReader)
+	var results []*EnrichmentResponse
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("xyo: download enrichment collection: tar next: %w", err)
+		}
+
+		if header.Typeflag != tar.TypeReg {
+			continue // Skip directories or symlinks
+		}
+
+		var result EnrichmentResponse
+		if err := json.NewDecoder(tarReader).Decode(&result); err != nil {
+			return nil, fmt.Errorf("xyo: download enrichment collection: decode json from %s: %w", header.Name, err)
+		}
+		results = append(results, &result)
+	}
+
+	return results, nil
 }
