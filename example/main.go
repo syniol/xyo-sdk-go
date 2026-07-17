@@ -1,9 +1,20 @@
 package main
 
-import "github.com/syniol/xyo-sdk-go"
+import (
+	"fmt"
+
+	"github.com/syniol/xyo-sdk-go"
+)
 
 func main() {
-	xyo.NewClient(&xyo.ClientConfig{APIKey: "RandomBase64EncodedStringApiKey"})
+	// Verify the SDK can be imported and the client can be instantiated.
+	// For a full usage example see the README.
+	_, err := xyo.NewClient(&xyo.ClientConfig{
+		APIKey: "example-api-key",
+	})
+	if err != nil {
+		panic(err)
+	}
 
-	println("Successfully imported and instantiated the XYO Client")
+	fmt.Println("Successfully imported and instantiated the XYO Client")
 }

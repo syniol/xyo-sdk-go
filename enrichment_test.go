@@ -1,39 +1,97 @@
 package xyo
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
+	"context"
 	"encoding/json"
-	"io"
+	"errors"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
+func newTestServerAndClient(t *testing.T, expectedMethod, expectedPath string, statusCode int, responsePayload interface{}) (*httptest.Server, Client) {
+	t.Helper()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != expectedMethod {
+			t.Errorf("expected method %q, got %q", expectedMethod, r.Method)
+		}
+		if r.URL.Path != expectedPath {
+			t.Errorf("expected path %q, got %q", expectedPath, r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer test-api-key" {
+			t.Errorf("missing or invalid Authorization header: %q", r.Header.Get("Authorization"))
+		}
+		if expectedMethod != http.MethodGet && r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("missing or invalid Content-Type header: %q", r.Header.Get("Content-Type"))
+		}
+		if r.Header.Get("Accept") != "application/json" {
+			t.Errorf("missing or invalid Accept header: %q", r.Header.Get("Accept"))
+		}
+
+		w.WriteHeader(statusCode)
+		if responsePayload != nil {
+			_ = json.NewEncoder(w).Encode(responsePayload)
+		}
+	}))
+
+	client, err := NewClient(&ClientConfig{
+		APIKey:  "test-api-key",
+		BaseURL: ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create test client: %v", err)
+	}
+
+	return ts, client
+}
+
 func TestEnrichTransaction(t *testing.T) {
-	t.Run("when status code is not 200 (OK)", func(t *testing.T) {
-		client := &client{
-			config: &ClientConfig{
-				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
-				httpClient: &httpClient{
-					request: func(req *http.Request) (*http.Response, error) {
-						return &http.Response{
-							StatusCode: http.StatusBadRequest,
-						}, nil
-					},
+	reqPayload := &EnrichmentRequest{
+		Content:     "Some Random Content",
+		CountryCode: "GB",
+	}
+
+	t.Run("non-200 status returns error", func(t *testing.T) {
+		errPayload := map[string]interface{}{
+			"errors": []map[string]interface{}{
+				{
+					"type":     "Invalid API Key",
+					"status":   http.StatusForbidden,
+					"title":    "Invalid API Key",
+					"instance": "InvalidClientAPIKeyException",
+					"detail":   "Credits expired or an invalid API Key is given",
 				},
 			},
 		}
 
-		_, err := client.EnrichTransaction(&EnrichmentRequest{
-			Content:     "Some Random Content",
-			CountryCode: "GB",
-		})
+		ts, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transaction", http.StatusForbidden, errPayload)
+		defer ts.Close()
+
+		_, err := client.EnrichTransaction(context.Background(), reqPayload)
 		if err == nil {
-			t.Error("expected error")
+			t.Fatal("expected error, got nil")
+		}
+
+		var apiErr *ErrorResponse
+		if !errors.As(err, &apiErr) {
+			t.Fatalf("expected error to unwrap to *ErrorResponse, got: %v", err)
+		}
+		if apiErr.HTTPStatusCode != http.StatusForbidden {
+			t.Errorf("expected HTTP status %d, got %d", http.StatusForbidden, apiErr.HTTPStatusCode)
+		}
+		if len(apiErr.Errors) != 1 {
+			t.Fatalf("expected 1 error, got %d", len(apiErr.Errors))
+		}
+		if apiErr.Errors[0].Title != "Invalid API Key" {
+			t.Errorf("expected title %q, got %q", "Invalid API Key", apiErr.Errors[0].Title)
 		}
 	})
 
-	t.Run("when status code is 200 (OK)", func(t *testing.T) {
-		mockedEnrichmentResponse := map[string]interface{}{
+	t.Run("200 OK decodes response", func(t *testing.T) {
+		payload := map[string]interface{}{
 			"merchant":    "Syniol Limited",
 			"description": "Software and Cloud Platform Consultancy",
 			"logo":        "base64/png;31233232dsdsdaaersdasjhdsfi",
@@ -41,149 +99,132 @@ func TestEnrichTransaction(t *testing.T) {
 			"location":    "United Kingdom, England",
 			"address":     "London, O2",
 		}
+		ts, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transaction", http.StatusOK, payload)
+		defer ts.Close()
 
-		jsonMockedEnrichmentResponse, _ := json.Marshal(mockedEnrichmentResponse)
-		stringReadCloser := io.NopCloser(bytes.NewReader(jsonMockedEnrichmentResponse))
-
-		client := &client{
-			config: &ClientConfig{
-				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
-				httpClient: &httpClient{
-					request: func(req *http.Request) (*http.Response, error) {
-						return &http.Response{
-							Body:       stringReadCloser,
-							StatusCode: http.StatusOK,
-						}, nil
-					},
-				},
-			},
-		}
-
-		_, err := client.EnrichTransaction(&EnrichmentRequest{
-			Content:     "Some Random Content",
-			CountryCode: "GB",
-		})
+		resp, err := client.EnrichTransaction(context.Background(), reqPayload)
 		if err != nil {
-			t.Error("error", err)
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if resp.Merchant != "Syniol Limited" {
+			t.Errorf("expected merchant %q, got %q", "Syniol Limited", resp.Merchant)
 		}
 	})
 }
 
 func TestEnrichTransactionCollection(t *testing.T) {
-	t.Run("when status code is not 200 (OK)", func(t *testing.T) {
-		client := &client{
-			config: &ClientConfig{
-				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
-				httpClient: &httpClient{
-					request: func(req *http.Request) (*http.Response, error) {
-						return &http.Response{
-							StatusCode: http.StatusBadRequest,
-						}, nil
-					},
-				},
-			},
-		}
+	requests := []*EnrichmentRequest{
+		{Content: "Some Random Content", CountryCode: "GB"},
+		{Content: "Some Random Content 2", CountryCode: "US"},
+	}
 
-		_, err := client.EnrichTransactionCollection([]*EnrichmentRequest{
-			{
-				Content:     "Some Random Content",
-				CountryCode: "GB",
-			},
-			{
-				Content:     "Some Random Content 2",
-				CountryCode: "US",
-			},
-		})
+	t.Run("non-200 status returns error", func(t *testing.T) {
+		ts, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transactions", http.StatusBadRequest, nil)
+		defer ts.Close()
+
+		_, err := client.EnrichTransactionCollection(context.Background(), requests)
 		if err == nil {
-			t.Error("expected error")
+			t.Fatal("expected error, got nil")
 		}
 	})
 
-	t.Run("when status code is 200 (OK)", func(t *testing.T) {
-		payloadMap := map[string]interface{}{
+	t.Run("200 OK decodes response", func(t *testing.T) {
+		payload := map[string]interface{}{
 			"id":   "72c037df-d0d3-43ee-9470-323ff35a2e50",
 			"link": "https://api.xyo.financial/ai/transactions/download/72c037df-d0d3-43ee-9470-323ff35a2e50.tar.gz",
 		}
-		serialisedPayload, _ := json.Marshal(payloadMap)
+		ts, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transactions", http.StatusOK, payload)
+		defer ts.Close()
 
-		client := &client{
-			config: &ClientConfig{
-				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
-				httpClient: &httpClient{
-					request: func(req *http.Request) (*http.Response, error) {
-						return &http.Response{
-							Body:       io.NopCloser(bytes.NewReader(serialisedPayload)),
-							StatusCode: http.StatusOK,
-						}, nil
-					},
-				},
-			},
-		}
-
-		_, err := client.EnrichTransactionCollection([]*EnrichmentRequest{
-			{
-				Content:     "Some Random Content",
-				CountryCode: "GB",
-			},
-			{
-				Content:     "Some Random Content 2",
-				CountryCode: "US",
-			},
-		})
+		resp, err := client.EnrichTransactionCollection(context.Background(), requests)
 		if err != nil {
-			t.Error("error", err)
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if resp.ID != "72c037df-d0d3-43ee-9470-323ff35a2e50" {
+			t.Errorf("expected ID %q, got %q", "72c037df-d0d3-43ee-9470-323ff35a2e50", resp.ID)
 		}
 	})
 }
 
 func TestEnrichTransactionCollectionStatus(t *testing.T) {
-	t.Run("when status code is not 200 (OK)", func(t *testing.T) {
-		client := &client{
-			config: &ClientConfig{
-				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
-				httpClient: &httpClient{
-					request: func(req *http.Request) (*http.Response, error) {
-						return &http.Response{
-							StatusCode: http.StatusBadRequest,
-						}, nil
-					},
-				},
-			},
-		}
+	t.Run("non-200 status returns error", func(t *testing.T) {
+		ts, client := newTestServerAndClient(t, http.MethodGet, "/v1/ai/finance/enrichment/transactions/status/asdsd", http.StatusBadRequest, nil)
+		defer ts.Close()
 
-		_, err := client.EnrichTransactionCollectionStatus("asdsd")
+		_, err := client.EnrichTransactionCollectionStatus(context.Background(), "asdsd")
 		if err == nil {
-			t.Error("expected error")
+			t.Fatal("expected error, got nil")
 		}
 	})
 
-	t.Run("when status code is 200 (OK)", func(t *testing.T) {
-		payloadMap := map[string]interface{}{
+	t.Run("200 OK returns correct status", func(t *testing.T) {
+		payload := map[string]interface{}{
 			"status": EnrichmentCollectionStatusReady,
 		}
-		serialisedPayload, _ := json.Marshal(payloadMap)
+		ts, client := newTestServerAndClient(t, http.MethodGet, "/v1/ai/finance/enrichment/transactions/status/72c037df-d0d3-43ee-9470-323ff35a2e50", http.StatusOK, payload)
+		defer ts.Close()
 
-		client := &client{
-			config: &ClientConfig{
-				APIKey: "LWMzMGE0NmQ1MmNkNQo2OWNhNWVlMy0MWItYWIyZi1hMTc3ZTFkMDA0NDM=",
-				httpClient: &httpClient{
-					request: func(req *http.Request) (*http.Response, error) {
-						return &http.Response{
-							Body:       io.NopCloser(bytes.NewReader(serialisedPayload)),
-							StatusCode: http.StatusOK,
-						}, nil
-					},
-				},
-			},
-		}
-
-		actual, err := client.EnrichTransactionCollectionStatus("72c037df-d0d3-43ee-9470-323ff35a2e50")
+		actual, err := client.EnrichTransactionCollectionStatus(context.Background(), "72c037df-d0d3-43ee-9470-323ff35a2e50")
 		if err != nil {
-			t.Error("error", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
-
 		if actual != EnrichmentCollectionStatusReady {
-			t.Errorf("expected a status: '%s'", EnrichmentCollectionStatusReady)
+			t.Errorf("expected status %q, got %q", EnrichmentCollectionStatusReady, actual)
+		}
+	})
+}
+
+func TestDownloadEnrichmentCollection(t *testing.T) {
+	t.Run("non-200 status returns error", func(t *testing.T) {
+		ts, client := newTestServerAndClient(t, http.MethodGet, "/downloads/123.tar.gz", http.StatusBadRequest, nil)
+		defer ts.Close()
+
+		_, err := client.DownloadEnrichmentCollection(context.Background(), ts.URL+"/downloads/123.tar.gz")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("200 OK streams and decodes tarball", func(t *testing.T) {
+		// Create an in-memory .tar.gz containing one JSON file
+		var buf bytes.Buffer
+		gzw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gzw)
+
+		payload := map[string]interface{}{
+			"merchant":    "Syniol Limited",
+			"description": "Bulk Test",
+		}
+		b, _ := json.Marshal(payload)
+
+		_ = tw.WriteHeader(&tar.Header{
+			Name:     "transaction_0.json",
+			Mode:     0600,
+			Size:     int64(len(b)),
+			Typeflag: tar.TypeReg,
+		})
+		_, _ = tw.Write(b)
+		_ = tw.Close()
+		_ = gzw.Close()
+
+		ts, client := newTestServerAndClient(t, http.MethodGet, "/downloads/123.tar.gz", http.StatusOK, nil)
+		defer ts.Close()
+
+		// Override the test server to return our custom tarball bytes instead of JSON
+		ts.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(buf.Bytes())
+		})
+
+		results, err := client.DownloadEnrichmentCollection(context.Background(), ts.URL+"/downloads/123.tar.gz")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(results) != 1 {
+			t.Fatalf("expected 1 result, got %d", len(results))
+		}
+		if results[0].Merchant != "Syniol Limited" {
+			t.Errorf("expected merchant %q, got %q", "Syniol Limited", results[0].Merchant)
 		}
 	})
 }
