@@ -3,6 +3,7 @@ package xyo
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -48,6 +49,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 	if baseURL == "" {
 		baseURL = defaultAPIBaseURL
 	}
+	baseURL = strings.TrimRight(baseURL, "/")
 
 	httpCl := config.HTTPClient
 	if httpCl == nil {
