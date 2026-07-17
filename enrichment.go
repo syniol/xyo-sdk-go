@@ -82,7 +82,7 @@ func apiError(resp *http.Response, op string) error {
 			errResp.HTTPStatusCode = resp.StatusCode
 			return fmt.Errorf("xyo: %s: %w", op, &errResp)
 		}
-		
+
 		// Fallback for non-JSON or unexpected error payloads
 		return fmt.Errorf("xyo: %s: status %d: %s", op, resp.StatusCode, string(bytes.TrimSpace(body)))
 	}
@@ -214,7 +214,7 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 	if err != nil {
 		return nil, fmt.Errorf("xyo: download enrichment collection: %w", err)
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, apiError(resp, "download enrichment collection")
 	}
