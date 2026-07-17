@@ -1,6 +1,7 @@
 package xyo
 
 import (
+	"errors"
 	"net/http"
 	"time"
 )
@@ -39,14 +40,13 @@ type client struct {
 }
 
 // NewClient creates a new XYO API client from the provided configuration.
-// It panics if config is nil or APIKey is empty — both are programming errors,
-// not runtime conditions.
-func NewClient(config *ClientConfig) Client {
+// It returns an error if config is nil or APIKey is empty.
+func NewClient(config *ClientConfig) (Client, error) {
 	if config == nil {
-		panic("xyo: NewClient called with nil config")
+		return nil, errors.New("xyo: NewClient called with nil config")
 	}
 	if config.APIKey == "" {
-		panic("xyo: NewClient called with empty APIKey")
+		return nil, errors.New("xyo: NewClient called with empty APIKey")
 	}
 
 	baseURL := config.BaseURL
@@ -65,5 +65,5 @@ func NewClient(config *ClientConfig) Client {
 		apiKey:     config.APIKey,
 		apiBaseURL: baseURL,
 		http:       &httpClient{request: httpCl.Do},
-	}
+	}, nil
 }

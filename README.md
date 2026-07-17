@@ -32,9 +32,12 @@ import (
 )
 
 func main() {
-	client := xyo.NewClient(&xyo.ClientConfig{
+	client, err := xyo.NewClient(&xyo.ClientConfig{
 		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	resp, err := client.EnrichTransaction(&xyo.EnrichmentRequest{
 		Content:     "COSTA PICKUP",
@@ -65,9 +68,12 @@ import (
 )
 
 func main() {
-	client := xyo.NewClient(&xyo.ClientConfig{
+	client, err := xyo.NewClient(&xyo.ClientConfig{
 		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	resp, err := client.EnrichTransactionCollection([]*xyo.EnrichmentRequest{
 		{
@@ -100,9 +106,12 @@ import (
 )
 
 func main() {
-	client := xyo.NewClient(&xyo.ClientConfig{
+	client, err := xyo.NewClient(&xyo.ClientConfig{
 		APIKey: "YourAPIKeyFromXYO.FinancialDashboard",
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	status, err := client.EnrichTransactionCollectionStatus("batch-123")
 	if err != nil {
