@@ -1,5 +1,5 @@
 # XYO.Financial SDK for Go
-![workflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/makefile.yml/badge.svg?branch=main)    ![workflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/release.yml/badge.svg)
+![workflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/makefile.yml/badge.svg?branch=main)    ![workflow](https://github.com/syniol/xyo-sdk-go/actions/workflows/release.yml/badge.svg)    [![Go Reference](https://pkg.go.dev/badge/github.com/syniol/xyo-sdk-go)](https://pkg.go.dev/github.com/syniol/xyo-sdk-go)
 
 <p align="center">
     <a href="https://xyo.financial" target="blank"><img alt="Go Gopher Mascot" width="50%" src="https://github.com/syniol/xyo-sdk-go/blob/main/docs/mascot.png?raw=true" /></a>
@@ -169,3 +169,5 @@ The [`example/`](example/) directory contains a minimal smoke test that verifies
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 Copyright &copy; 2025 Syniol Limited.
+
+agy --conversation=d6c7506d-0bbb-4e10-abbe-4c118d89192a
