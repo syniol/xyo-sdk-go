@@ -166,7 +166,7 @@ The [`example/`](example/) directory contains a minimal smoke test that verifies
 
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.
 
 Copyright &copy; 2025 Syniol Limited.
 
