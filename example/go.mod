@@ -2,6 +2,6 @@ module example
 
 go 1.18
 
-require github.com/xyo-financial/sdk-go v1.2.0
+require github.com/xyo-financial/sdk-go v1.2.1
 
 replace github.com/xyo-financial/sdk-go => ../
