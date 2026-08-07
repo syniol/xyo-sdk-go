@@ -10,7 +10,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/syniol/xyo-sdk-go/internal"
+	"github.com/xyo-financial/sdk-go/internal"
 )
 
 // EnrichmentRequest is the request payload for single and bulk transaction enrichment.

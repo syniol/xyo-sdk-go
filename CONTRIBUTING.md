@@ -24,8 +24,8 @@ The following sections are for internal engineering use.
 1. Make sure you have Go 1.18 or newer installed.
 2. Clone the repository:
    ```sh
-   git clone https://github.com/syniol/xyo-sdk-go.git
-   cd xyo-sdk-go
+   git clone https://github.com/xyo-financial/sdk-go.git
+   cd sdk-go
    ```
 3. Run the tests to verify everything works:
    ```sh

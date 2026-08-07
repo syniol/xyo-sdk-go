@@ -1,3 +1,3 @@
-module github.com/syniol/xyo-sdk-go
+module github.com/xyo-financial/sdk-go
 
 go 1.18

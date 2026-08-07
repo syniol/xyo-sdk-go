@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/syniol/xyo-sdk-go"
+	"github.com/xyo-financial/sdk-go"
 )
 
 func main() {

@@ -51,33 +51,33 @@ jobs:
       # 1. Archive creation
       - name: Build Archive
         run: |
-          git archive --format=tar.gz --prefix=xyo-sdk-go-${{ github.ref_name }}/ -o xyo-sdk-go-${{ github.ref_name }}.tar.gz HEAD
+          git archive --format=tar.gz --prefix=sdk-go-${{ github.ref_name }}/ -o sdk-go-${{ github.ref_name }}.tar.gz HEAD
 
       # 2. Generate Checksums
       - name: Generate SHA-256 Checksum
-        run: sha256sum xyo-sdk-go-${{ github.ref_name }}.tar.gz > xyo-sdk-go-${{ github.ref_name }}.tar.gz.sha256
+        run: sha256sum sdk-go-${{ github.ref_name }}.tar.gz > sdk-go-${{ github.ref_name }}.tar.gz.sha256
 
       # 3. Generate SBOM (Software Bill of Materials)
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@v0
         with:
           format: 'spdx-json'
-          output-file: 'xyo-sdk-go-${{ github.ref_name }}.spdx.json'
+          output-file: 'sdk-go-${{ github.ref_name }}.spdx.json'
 
       # 4. Generate GitHub Attestation (Provenance & Integrity signatures)
       - name: Generate Artifact Attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-path: 'xyo-sdk-go-${{ github.ref_name }}.tar.gz'
+          subject-path: 'sdk-go-${{ github.ref_name }}.tar.gz'
 
       # 5. Create GitHub Release with Assets
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            xyo-sdk-go-${{ github.ref_name }}.tar.gz
-            xyo-sdk-go-${{ github.ref_name }}.tar.gz.sha256
-            xyo-sdk-go-${{ github.ref_name }}.spdx.json
+            sdk-go-${{ github.ref_name }}.tar.gz
+            sdk-go-${{ github.ref_name }}.tar.gz.sha256
+            sdk-go-${{ github.ref_name }}.spdx.json
           generate_release_notes: true
           draft: false
           prerelease: false
