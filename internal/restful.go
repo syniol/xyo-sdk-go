@@ -11,5 +11,5 @@ func MandatoryAPIHeaders(req *http.Request, apiKey string) {
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	req.Header.Set("User-Agent", "sdk-go/1.2.1")
+	req.Header.Set("User-Agent", "sdk-go/1.2.4")
 }
