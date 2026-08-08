@@ -1,0 +1,295 @@
+openapi: 3.0.0
+info:
+  contact:
+    name: Syniol Support
+    url: https://syniol.com
+  description: RESTful API for enriching financial transactions.
+  title: XYO RESTful Transaction Enrichment API
+  version: 1.0.0
+servers:
+- url: https://api.xyo.financial
+tags:
+- description: Endpoints related to enriching financial transactions.
+  name: Enrichment
+paths:
+  /v1/ai/finance/enrichment/transaction:
+    post:
+      description: Enrich a single financial transaction synchronously.
+      operationId: enrichTransaction
+      requestBody:
+        content:
+          application/json:
+            example:
+              content: COSTA PICKUP
+              countryCode: GB
+            schema:
+              $ref: "#/components/schemas/EnrichmentRequest"
+      responses:
+        "3XX":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Redirection
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Client Error
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrichmentResponse"
+          description: Successful response
+      security:
+      - BearerAuth: []
+      summary: Transaction Enrichment
+      tags:
+      - Enrichment
+  /v1/ai/finance/enrichment/transactions:
+    post:
+      description: Enrich a collection of financial transactions asynchronously.
+      operationId: enrichTransactions
+      parameters:
+      - deprecated: false
+        example: syniol
+        explode: false
+        in: header
+        name: x-api-user
+        required: false
+        schema: {}
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            example:
+            - content: COSTA COLLECT
+              countryCode: GB
+            schema:
+              items:
+                $ref: "#/components/schemas/enrichTransactions_request_inner"
+              type: array
+      responses:
+        "3XX":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Redirection
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Client Error
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrichTransactionCollectionResponse"
+          description: Successful response
+      security:
+      - BearerAuth: []
+      summary: Transaction Enrichments
+      tags:
+      - Enrichment
+  /v1/ai/finance/enrichment/status/{id}:
+    get:
+      description: Get the status of an asynchronous bulk enrichment job.
+      operationId: getEnrichmentStatus
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        style: simple
+      - deprecated: false
+        example: syniol
+        explode: false
+        in: header
+        name: x-api-user
+        required: false
+        schema: {}
+        style: simple
+      responses:
+        "3XX":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Redirection
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Client Error
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrichmentCollectionStatusResponse"
+          description: Successful response
+      security:
+      - BearerAuth: []
+      summary: Transaction Enrichments Status
+      tags:
+      - Enrichment
+components:
+  schemas:
+    APIError:
+      example:
+        type: type
+        title: title
+        status: 0
+        detail: detail
+        instance: instance
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+      required:
+      - detail
+      - instance
+      - title
+      - type
+      type: object
+    ErrorResponse:
+      example:
+        errors:
+        - type: type
+          title: title
+          status: 0
+          detail: detail
+          instance: instance
+        - type: type
+          title: title
+          status: 0
+          detail: detail
+          instance: instance
+      properties:
+        errors:
+          items:
+            $ref: "#/components/schemas/APIError"
+          type: array
+      required:
+      - errors
+      type: object
+    EnrichmentRequest:
+      example:
+        content: content
+        countryCode: countryCode
+      properties:
+        content:
+          description: "Content is the payment description, maximum 128 characters."
+          maxLength: 128
+          type: string
+        countryCode:
+          description: CountryCode is the ISO 3166-1 alpha-2 two-character country
+            code.
+          maxLength: 2
+          minLength: 2
+          type: string
+      required:
+      - content
+      - countryCode
+      title: EnrichmentRequest
+      type: object
+    EnrichmentResponse:
+      example:
+        merchant: merchant
+        description: description
+        categories:
+        - categories
+        - categories
+        logo: logo
+        location: location
+        address: address
+      properties:
+        merchant:
+          description: Merchant is the name of the merchant.
+          type: string
+        description:
+          description: Description is a brief description of the merchant.
+          type: string
+        categories:
+          description: Categories lists categories fitting the description of the
+            merchant.
+          items:
+            type: string
+          type: array
+        logo:
+          description: Logo is a base64-encoded PNG or JPEG representing the merchant
+            logo.
+          type: string
+        location:
+          description: Location describes the country and city. May be empty if the
+            API returns null.
+          type: string
+        address:
+          description: Address describes the exact address of purchase. May be empty
+            if the API returns null.
+          type: string
+      required:
+      - address
+      - categories
+      - description
+      - location
+      - logo
+      - merchant
+      title: EnrichmentResponse
+      type: object
+    enrichTransactions_request_inner:
+      properties:
+        content:
+          type: string
+        countryCode:
+          type: string
+      type: object
+    EnrichTransactionCollectionResponse:
+      example:
+        id: id
+        link: link
+      properties:
+        id:
+          description: ID is the work ID for the enrichment request.
+          type: string
+        link:
+          description: Link is the URL to the downloadable tar.gz results archive.
+          type: string
+      required:
+      - id
+      - link
+      title: EnrichTransactionCollectionResponse
+      type: object
+    EnrichmentCollectionStatusResponse:
+      example:
+        status: READY
+      properties:
+        status:
+          description: Status represents the processing state of a bulk enrichment
+            job.
+          enum:
+          - READY
+          - FAILED
+          - PENDING
+          type: string
+      required:
+      - status
+      title: EnrichmentCollectionStatusResponse
+      type: object
+  securitySchemes:
+    BearerAuth:
+      scheme: bearer
+      type: http
