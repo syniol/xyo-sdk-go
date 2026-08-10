@@ -81,6 +81,11 @@ func parseOpenAPIError(err error, op string, httpResp *http.Response) error {
 			if jsonErr := json.Unmarshal(openapiErr.Body(), &raw); jsonErr == nil && len(raw.Errors) > 0 {
 				return fmt.Errorf("xyo: %s: %w", op, mapErrorResponse(&raw, statusCode))
 			}
+			var sdkRaw ErrorResponse
+			if jsonErr := json.Unmarshal(openapiErr.Body(), &sdkRaw); jsonErr == nil && len(sdkRaw.Errors) > 0 {
+				sdkRaw.HTTPStatusCode = statusCode
+				return fmt.Errorf("xyo: %s: %w", op, &sdkRaw)
+			}
 		}
 
 		if statusCode != 0 {
