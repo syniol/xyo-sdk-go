@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-Only the latest stable release of the C++ SDK receives security updates.
+Only the `2.0.0` release of the XYO Go SDK receives active security updates and patches.
 
 | Version | Supported |
 | ------- | --------- |
-| 1.x.x   | Yes       |
-| < 1.0.0 | No        |
+| 2.0.0   | :white_check_mark: |
+| < 2.0.0 | :x: |
 
 ## Reporting a Vulnerability
 
