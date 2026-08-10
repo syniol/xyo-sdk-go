@@ -5,9 +5,11 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/xyo-financial/sdk-go/v2/openapi"
 )
@@ -102,15 +104,13 @@ func (c *client) EnrichTransaction(ctx context.Context, req *EnrichmentRequest) 
 // EnrichTransactions submits a bulk enrichment request asynchronously.
 func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
 	items := make([]openapi.EnrichTransactionsRequestInner, 0, len(reqs))
-	for _, req := range reqs {
+	for i, req := range reqs {
 		if req == nil {
-			continue
+			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d is nil", i)
 		}
-		content := req.Content
-		cc := req.CountryCode
 		items = append(items, openapi.EnrichTransactionsRequestInner{
-			Content:     &content,
-			CountryCode: &cc,
+			Content:     &req.Content,
+			CountryCode: &req.CountryCode,
 		})
 	}
 
@@ -156,15 +156,39 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	if userAgent := c.apiClient.GetConfig().UserAgent; userAgent != "" {
+		req.Header.Set("User-Agent", userAgent)
+	}
 
-	resp, err := c.http.Do(req)
+	// Only attach Authorization header if download URL matches the configured API host
+	if parsedDownloadURL, err := url.Parse(downloadURL); err == nil {
+		if parsedBaseURL, err := url.Parse(c.apiBaseURL); err == nil {
+			if parsedDownloadURL.Host == parsedBaseURL.Host {
+				if authHeader, ok := c.apiClient.GetConfig().DefaultHeader["Authorization"]; ok {
+					req.Header.Set("Authorization", authHeader)
+				}
+			}
+		}
+	}
+
+	httpCl := c.apiClient.GetConfig().HTTPClient
+	if httpCl == nil {
+		httpCl = http.DefaultClient
+	}
+
+	resp, err := httpCl.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		var errResp ErrorResponse
+		if json.Unmarshal(body, &errResp) == nil && len(errResp.Errors) > 0 {
+			errResp.HTTPStatusCode = resp.StatusCode
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: %w", &errResp)
+		}
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: status %d", resp.StatusCode)
 	}
 
@@ -179,7 +203,7 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 
 	for {
 		header, err := tarReader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

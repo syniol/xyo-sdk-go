@@ -277,6 +277,91 @@ func TestGetEnrichmentStatus(t *testing.T) {
 	})
 }
 
+func TestEnrichTransaction_NilRequest(t *testing.T) {
+	_, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transaction", http.StatusOK, nil)
+	_, err := client.EnrichTransaction(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected error for nil request, got nil")
+	}
+}
+
+func TestEnrichTransactions_NilRequestInSlice(t *testing.T) {
+	_, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transactions", http.StatusOK, nil)
+	reqs := []*EnrichmentRequest{
+		{Content: "Valid", CountryCode: "GB"},
+		nil,
+	}
+	_, err := client.EnrichTransactions(context.Background(), reqs)
+	if err == nil {
+		t.Fatal("expected error for slice containing nil request, got nil")
+	}
+}
+
+func TestDownloadEnrichmentCollection_RFC7807Error(t *testing.T) {
+	errPayload := map[string]interface{}{
+		"errors": []map[string]interface{}{
+			{
+				"type":   "https://api.xyo.financial/errors/download-expired",
+				"status": http.StatusGone,
+				"title":  "Download Link Expired",
+				"detail": "The requested batch download link has expired.",
+			},
+		},
+	}
+	ts, client := newTestServerAndClient(t, http.MethodGet, "/downloads/expired.tar.gz", http.StatusGone, errPayload)
+	defer ts.Close()
+
+	_, err := client.DownloadEnrichmentCollection(context.Background(), ts.URL+"/downloads/expired.tar.gz")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var apiErr *ErrorResponse
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected error to unwrap to *ErrorResponse, got %v", err)
+	}
+	if apiErr.HTTPStatusCode != http.StatusGone {
+		t.Errorf("expected HTTP status %d, got %d", http.StatusGone, apiErr.HTTPStatusCode)
+	}
+	if len(apiErr.Errors) != 1 || apiErr.Errors[0].Title != "Download Link Expired" {
+		t.Errorf("unexpected error payload: %+v", apiErr.Errors)
+	}
+}
+
+func TestDownloadEnrichmentCollection_ExternalHostNoAuthLeak(t *testing.T) {
+	externalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if auth := r.Header.Get("Authorization"); auth != "" {
+			t.Errorf("expected NO Authorization header for external host, got %q", auth)
+		}
+		w.WriteHeader(http.StatusOK)
+		// Return valid empty tarball
+		var buf bytes.Buffer
+		gzw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gzw)
+		_ = tw.Close()
+		_ = gzw.Close()
+		_, _ = w.Write(buf.Bytes())
+	}))
+	defer externalServer.Close()
+
+	// Client is configured with a different base URL
+	client, err := NewClient(&ClientConfig{
+		APIKey:  "secret-token",
+		BaseURL: "https://api.xyo.financial",
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	results, err := client.DownloadEnrichmentCollection(context.Background(), externalServer.URL+"/presigned.tar.gz")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected 0 results, got %d", len(results))
+	}
+}
+
 func TestNewClient_ConfigAlias(t *testing.T) {
 	c, err := NewClient(&Config{
 		APIKey: "test-key",
