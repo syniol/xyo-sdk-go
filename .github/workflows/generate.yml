@@ -1,9 +1,8 @@
 name: Regenerate Go OpenAPI Client
 
 on:
-  push:
-    paths:
-      - 'specs/openapi.yml'
+  repository_dispatch:
+    types: [spec_updated]
   workflow_dispatch:
 
 jobs:
@@ -13,8 +12,14 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout SDK repository
         uses: actions/checkout@v4
+
+      - name: Checkout OpenAPI specification
+        uses: actions/checkout@v4
+        with:
+          repository: xyo-financial/specs
+          path: specs
 
       - name: Set up Node.js (for openapi-generator-cli)
         uses: actions/setup-node@v4
@@ -42,6 +47,9 @@ jobs:
           rm -rf openapi/test \
                  openapi/docs \
                  openapi/api
+
+          # Clean up specs checkout so it is not committed
+          rm -rf specs
 
       - name: Build and vet the Golang SDK
         run: |
