@@ -21,3 +21,11 @@
 #docs/*.md
 # Then explicitly reverse the ignore rule for a single file:
 #!docs/README.md
+
+# Ignored boilerplate files
+git_push.sh
+.travis.yml
+README.md
+api/
+docs/
+test/
