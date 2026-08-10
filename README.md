@@ -12,7 +12,7 @@
     <a href="https://pkg.go.dev/github.com/xyo-financial/sdk-go/v2"><img src="https://pkg.go.dev/badge/github.com/xyo-financial/sdk-go/v2" alt="Go Reference" /></a>
     <img src="https://img.shields.io/badge/Go-%3E%3D1.18-00ADD8?logo=go&logoColor=white" alt="Go Compatibility" />
     <img src="https://img.shields.io/badge/RFC_7807-Compliant-brightgreen" alt="RFC 7807 Compliant" />
-    <img src="https://img.shields.io/badge/License-BSD_3--Clause-blue.svg" alt="License" />
+    <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License" />
 </p>
 
 ---
@@ -373,6 +373,6 @@ For enterprise SLAs, custom rate tiers, or dedicated technical support:
 
 ## 📄 License
 
-This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Apache License, Version 2.0** - see the [LICENSE](LICENSE) file for details.
 
 Copyright &copy; 2026 Syniol Limited. All rights reserved.
