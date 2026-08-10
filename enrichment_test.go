@@ -373,4 +373,3 @@ func TestNewClient_ConfigAlias(t *testing.T) {
 		t.Fatal("expected non-nil client")
 	}
 }
-

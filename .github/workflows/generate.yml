@@ -43,8 +43,9 @@ jobs:
                  openapi/docs \
                  openapi/api
 
-      - name: Build and vet the Golang SDK
+      - name: Format, build and vet the Golang SDK
         run: |
+          gofmt -w .
           go build ./...
           go vet ./...
 

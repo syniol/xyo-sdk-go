@@ -19,7 +19,7 @@ var _ MappedNullable = &EnrichTransactionsRequestInner{}
 
 // EnrichTransactionsRequestInner struct for EnrichTransactionsRequestInner
 type EnrichTransactionsRequestInner struct {
-	Content *string `json:"content,omitempty"`
+	Content     *string `json:"content,omitempty"`
 	CountryCode *string `json:"countryCode,omitempty"`
 }
 
@@ -105,7 +105,7 @@ func (o *EnrichTransactionsRequestInner) SetCountryCode(v string) {
 }
 
 func (o EnrichTransactionsRequestInner) MarshalJSON() ([]byte, error) {
-	toSerialize,err := o.ToMap()
+	toSerialize, err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -158,5 +158,3 @@ func (v *NullableEnrichTransactionsRequestInner) UnmarshalJSON(src []byte) error
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-
