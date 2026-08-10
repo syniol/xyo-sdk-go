@@ -2,11 +2,11 @@ name: Unit Tests
 
 on:
   push:
-    branches: [ "main", "release-*" ]
+    branches: [ "main" ]
     tags:
       - '*'
   pull_request:
-    branches: [ "main", "release-*" ]
+    branches: [ "main" ]
 
 jobs:
   build:
