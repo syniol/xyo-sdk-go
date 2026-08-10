@@ -6,6 +6,7 @@ run:
 
 linters:
   enable:
+    - gofmt
     - govet
     - errcheck
     - staticcheck
@@ -20,6 +21,7 @@ issues:
   exclude-rules:
     - path: openapi/
       linters:
+        - gofmt
         - errcheck
         - gosimple
         - govet
