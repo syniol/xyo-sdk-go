@@ -31,26 +31,25 @@ jobs:
           npx -y @openapitools/openapi-generator-cli generate \
             -i specs/openapi.yml \
             -g go \
-            -o golang/openapi \
+            -o openapi \
             --additional-properties=packageName=openapi,withGoMod=false,hideGenerationTimestamp=true \
             --global-property apiTests=false,modelTests=false,apiDocs=false,modelDocs=false
 
           # Remove generator noise files
-          rm -f golang/openapi/git_push.sh \
-                golang/openapi/.travis.yml \
-                golang/openapi/README.md
-          rm -rf golang/openapi/test \
-                 golang/openapi/docs \
-                 golang/openapi/api
+          rm -f openapi/git_push.sh \
+                openapi/.travis.yml \
+                openapi/README.md
+          rm -rf openapi/test \
+                 openapi/docs \
+                 openapi/api
 
       - name: Build and vet the Golang SDK
         run: |
-          cd golang
           go build ./...
           go vet ./...
 
       - name: Commit regenerated client
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore(golang): regenerate OpenAPI client from updated spec"
-          file_pattern: "golang/openapi/**"
+          commit_message: "chore: regenerate OpenAPI client from updated spec"
+          file_pattern: "openapi/**"
