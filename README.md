@@ -366,7 +366,7 @@ For backward compatibility with earlier integrations, the following alias method
 
 For enterprise SLAs, custom rate tiers, or dedicated technical support:
 - **Dashboard**: [https://xyo.financial/dashboard](https://xyo.financial/dashboard)
-- **Email Support**: [support@xyo.financial](mailto:support@xyo.financial)
+- **Email Support**: [support@syniol.com](mailto:support@syniol.com)
 - **Maintained By**: [Syniol Limited](https://syniol.com)
 
 ---
