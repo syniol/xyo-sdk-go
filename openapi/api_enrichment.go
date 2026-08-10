@@ -19,12 +19,13 @@ import (
 	"strings"
 )
 
+
 // EnrichmentAPIService EnrichmentAPI service
 type EnrichmentAPIService service
 
 type ApiEnrichTransactionRequest struct {
-	ctx               context.Context
-	ApiService        *EnrichmentAPIService
+	ctx context.Context
+	ApiService *EnrichmentAPIService
 	enrichmentRequest *EnrichmentRequest
 }
 
@@ -42,25 +43,24 @@ EnrichTransaction Transaction Enrichment
 
 Enrich a single financial transaction synchronously.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiEnrichTransactionRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiEnrichTransactionRequest
 */
 func (a *EnrichmentAPIService) EnrichTransaction(ctx context.Context) ApiEnrichTransactionRequest {
 	return ApiEnrichTransactionRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return EnrichmentResponse
+//  @return EnrichmentResponse
 func (a *EnrichmentAPIService) EnrichTransactionExecute(r ApiEnrichTransactionRequest) (*EnrichmentResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *EnrichmentResponse
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *EnrichmentResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "EnrichmentAPIService.EnrichTransaction")
@@ -122,8 +122,8 @@ func (a *EnrichmentAPIService) EnrichTransactionExecute(r ApiEnrichTransactionRe
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		if localVarHTTPResponse.StatusCode >= 400 && localVarHTTPResponse.StatusCode < 500 {
@@ -133,8 +133,8 @@ func (a *EnrichmentAPIService) EnrichTransactionExecute(r ApiEnrichTransactionRe
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
@@ -152,9 +152,9 @@ func (a *EnrichmentAPIService) EnrichTransactionExecute(r ApiEnrichTransactionRe
 }
 
 type ApiEnrichTransactionsRequest struct {
-	ctx                            context.Context
-	ApiService                     *EnrichmentAPIService
-	xApiUser                       *interface{}
+	ctx context.Context
+	ApiService *EnrichmentAPIService
+	xApiUser *interface{}
 	enrichTransactionsRequestInner *[]EnrichTransactionsRequestInner
 }
 
@@ -177,25 +177,24 @@ EnrichTransactions Transaction Enrichments
 
 Enrich a collection of financial transactions asynchronously.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@return ApiEnrichTransactionsRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @return ApiEnrichTransactionsRequest
 */
 func (a *EnrichmentAPIService) EnrichTransactions(ctx context.Context) ApiEnrichTransactionsRequest {
 	return ApiEnrichTransactionsRequest{
 		ApiService: a,
-		ctx:        ctx,
+		ctx: ctx,
 	}
 }
 
 // Execute executes the request
-//
-//	@return EnrichTransactionCollectionResponse
+//  @return EnrichTransactionCollectionResponse
 func (a *EnrichmentAPIService) EnrichTransactionsExecute(r ApiEnrichTransactionsRequest) (*EnrichTransactionCollectionResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodPost
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *EnrichTransactionCollectionResponse
+		localVarHTTPMethod   = http.MethodPost
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *EnrichTransactionCollectionResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "EnrichmentAPIService.EnrichTransactions")
@@ -260,8 +259,8 @@ func (a *EnrichmentAPIService) EnrichTransactionsExecute(r ApiEnrichTransactions
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		if localVarHTTPResponse.StatusCode >= 400 && localVarHTTPResponse.StatusCode < 500 {
@@ -271,8 +270,8 @@ func (a *EnrichmentAPIService) EnrichTransactionsExecute(r ApiEnrichTransactions
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}
@@ -290,10 +289,10 @@ func (a *EnrichmentAPIService) EnrichTransactionsExecute(r ApiEnrichTransactions
 }
 
 type ApiGetEnrichmentStatusRequest struct {
-	ctx        context.Context
+	ctx context.Context
 	ApiService *EnrichmentAPIService
-	id         string
-	xApiUser   *interface{}
+	id string
+	xApiUser *interface{}
 }
 
 func (r ApiGetEnrichmentStatusRequest) XApiUser(xApiUser interface{}) ApiGetEnrichmentStatusRequest {
@@ -310,27 +309,26 @@ GetEnrichmentStatus Transaction Enrichments Status
 
 Get the status of an asynchronous bulk enrichment job.
 
-	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-	@param id
-	@return ApiGetEnrichmentStatusRequest
+ @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+ @param id
+ @return ApiGetEnrichmentStatusRequest
 */
 func (a *EnrichmentAPIService) GetEnrichmentStatus(ctx context.Context, id string) ApiGetEnrichmentStatusRequest {
 	return ApiGetEnrichmentStatusRequest{
 		ApiService: a,
-		ctx:        ctx,
-		id:         id,
+		ctx: ctx,
+		id: id,
 	}
 }
 
 // Execute executes the request
-//
-//	@return EnrichmentCollectionStatusResponse
+//  @return EnrichmentCollectionStatusResponse
 func (a *EnrichmentAPIService) GetEnrichmentStatusExecute(r ApiGetEnrichmentStatusRequest) (*EnrichmentCollectionStatusResponse, *http.Response, error) {
 	var (
-		localVarHTTPMethod  = http.MethodGet
-		localVarPostBody    interface{}
-		formFiles           []formFile
-		localVarReturnValue *EnrichmentCollectionStatusResponse
+		localVarHTTPMethod   = http.MethodGet
+		localVarPostBody     interface{}
+		formFiles            []formFile
+		localVarReturnValue  *EnrichmentCollectionStatusResponse
 	)
 
 	localBasePath, err := a.client.cfg.ServerURLWithContext(r.ctx, "EnrichmentAPIService.GetEnrichmentStatus")
@@ -394,8 +392,8 @@ func (a *EnrichmentAPIService) GetEnrichmentStatusExecute(r ApiGetEnrichmentStat
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 			return localVarReturnValue, localVarHTTPResponse, newErr
 		}
 		if localVarHTTPResponse.StatusCode >= 400 && localVarHTTPResponse.StatusCode < 500 {
@@ -405,8 +403,8 @@ func (a *EnrichmentAPIService) GetEnrichmentStatusExecute(r ApiGetEnrichmentStat
 				newErr.error = err.Error()
 				return localVarReturnValue, localVarHTTPResponse, newErr
 			}
-			newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
-			newErr.model = v
+					newErr.error = formatErrorMessage(localVarHTTPResponse.Status, &v)
+					newErr.model = v
 		}
 		return localVarReturnValue, localVarHTTPResponse, newErr
 	}

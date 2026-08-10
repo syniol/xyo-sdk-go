@@ -1,0 +1,29 @@
+run:
+  timeout: 5m
+  skip-dirs:
+    - openapi
+    - example
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+
+issues:
+  exclude-dirs:
+    - openapi
+  exclude-rules:
+    - path: openapi/
+      linters:
+        - errcheck
+        - gosimple
+        - govet
+        - ineffassign
+        - staticcheck
+        - typecheck
+        - unused

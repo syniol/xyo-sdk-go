@@ -3,10 +3,10 @@
 all: fmt lint test
 
 fmt:
-	gofmt -w .
+	find . -type f -name '*.go' -not -path './openapi/*' -exec gofmt -w {} +
 
 fmt-check:
-	@if [ -n "$$(gofmt -l .)" ]; then echo "Go code is not formatted. Please run 'make fmt' or 'go fmt ./...'."; exit 1; fi
+	@if [ -n "$$(find . -type f -name '*.go' -not -path './openapi/*' -exec gofmt -l {} +)" ]; then echo "Go code is not formatted. Please run 'make fmt' or 'go fmt ./...'."; exit 1; fi
 
 lint:
 	go vet ./...

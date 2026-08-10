@@ -120,16 +120,13 @@ npx @openapitools/openapi-generator-cli generate \
   - `withGoMod=false`: Suppresses generating an isolated `go.mod` file inside `openapi/`, ensuring it seamlessly forms a submodule of the parent `github.com/xyo-financial/sdk-go/v2`.
   - `hideGenerationTimestamp=true`: Prevents timestamp headers in generated comments, eliminating Git diff churn.
 
-### Post-Generation Clean-Up & Formatting
-After code generation completes, format the Go code and remove unnecessary generator metadata files:
+### Post-Generation Clean-Up
+After code generation completes, remove unnecessary generator metadata files (generated code in `openapi/` should remain untouched):
 
 ```bash
 # Clean up generator metadata stubs if generated
 rm -f openapi/git_push.sh openapi/.travis.yml openapi/README.md
 rm -rf openapi/test openapi/docs openapi/api
-
-# Format generated code
-gofmt -s -w ./openapi
 ```
 
 ---

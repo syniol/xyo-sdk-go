@@ -14,8 +14,8 @@ RUN apk add --update-cache \
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.50.1 \
     && golangci-lint --version
 
-# Format check
-RUN if [ -n "$(gofmt -l .)" ]; then echo "Go code is not formatted. Please run go fmt."; exit 1; fi
+# Format check (ignoring generated openapi code)
+RUN if [ -n "$(find . -type f -name '*.go' -not -path './openapi/*' -exec gofmt -l {} +)" ]; then echo "Go code is not formatted. Please run go fmt."; exit 1; fi
 
 # Static Analysis
 RUN go vet ./...
