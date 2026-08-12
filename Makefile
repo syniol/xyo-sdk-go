@@ -1,6 +1,18 @@
+.PHONY: build fmt lint test check ssh
+
 build:
 	docker build -f deploy/Dockerfile . -t sdk-go:latest --no-cache
 
+fmt:
+	go fmt .
+
+lint:
+	go vet ./...
+
+test:
+	go test ./... -v
+
+check: fmt lint test
 
 ssh:
 	docker run -it --rm --name XYO_financial_SDK_Golang \

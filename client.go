@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/xyo-financial/sdk-go/v2/openapi"
 )
 
 const defaultAPIBaseURL = "https://api.xyo.financial"
@@ -24,15 +26,17 @@ type ClientConfig struct {
 	HTTPClient *http.Client
 }
 
+// Config is an alias for ClientConfig.
+type Config = ClientConfig
+
 // Client is the entry point for interacting with the XYO.Financial enrichment API.
 type Client interface {
 	Enrichment
 }
 
 type client struct {
-	apiKey     string
 	apiBaseURL string
-	http       *http.Client
+	apiClient  *openapi.APIClient
 }
 
 // NewClient creates a new XYO API client from the provided configuration.
@@ -58,9 +62,20 @@ func NewClient(config *ClientConfig) (Client, error) {
 		}
 	}
 
+	cfg := openapi.NewConfiguration()
+	cfg.UserAgent = "xyo-sdk-go/2.0.0"
+	cfg.Servers = openapi.ServerConfigurations{
+		{
+			URL: baseURL,
+		},
+	}
+	cfg.HTTPClient = httpCl
+	cfg.AddDefaultHeader("Authorization", "Bearer "+config.APIKey)
+
+	apiClient := openapi.NewAPIClient(cfg)
+
 	return &client{
-		apiKey:     config.APIKey,
 		apiBaseURL: baseURL,
-		http:       httpCl,
+		apiClient:  apiClient,
 	}, nil
 }

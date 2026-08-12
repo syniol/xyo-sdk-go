@@ -1,0 +1,69 @@
+name: Regenerate Go OpenAPI Client
+
+on:
+  repository_dispatch:
+    types: [spec_tagged, spec_updated]
+  workflow_dispatch:
+    inputs:
+      spec_tag:
+        description: 'Tag or branch in xyo-financial/specs to generate from'
+        required: false
+        default: 'main'
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout SDK repository
+        uses: actions/checkout@v4
+
+      - name: Checkout OpenAPI specification
+        uses: actions/checkout@v4
+        with:
+          repository: xyo-financial/specs
+          ref: ${{ github.event.client_payload.tag || inputs.spec_tag || 'main' }}
+          path: specs
+
+      - name: Set up Node.js (for openapi-generator-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Generate OpenAPI Go client
+        run: |
+          npx -y @openapitools/openapi-generator-cli generate \
+            -i specs/openapi.yml \
+            -g go \
+            -o openapi \
+            --additional-properties=packageName=openapi,withGoMod=false,hideGenerationTimestamp=true \
+            --global-property apiTests=false,modelTests=false,apiDocs=false,modelDocs=false
+
+          # Remove generator noise files
+          rm -f openapi/git_push.sh \
+                openapi/.travis.yml \
+                openapi/README.md
+          rm -rf openapi/test \
+                 openapi/docs \
+                 openapi/api
+
+          # Clean up specs checkout so it is not committed
+          rm -rf specs
+
+      - name: Build and vet the Golang SDK
+        run: |
+          go build ./...
+          go vet ./...
+
+      - name: Commit regenerated client
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: regenerate OpenAPI client from spec ${{ github.event.client_payload.tag || inputs.spec_tag || 'latest' }}"
+          file_pattern: "openapi/**"

@@ -2,15 +2,16 @@ package xyo
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
-	"github.com/xyo-financial/sdk-go/internal"
+	"github.com/xyo-financial/sdk-go/v2/openapi"
 )
 
 // EnrichmentRequest is the request payload for single and bulk transaction enrichment.
@@ -54,175 +55,146 @@ const (
 	EnrichmentCollectionStatusPending EnrichmentCollectionStatus = "PENDING"
 )
 
-// enrichmentCollectionStatusResponse is an internal deserialisation wrapper.
-type enrichmentCollectionStatusResponse struct {
-	Status EnrichmentCollectionStatus `json:"status"`
-}
-
 // Enrichment defines the contract for all XYO transaction enrichment operations.
 type Enrichment interface {
+	// EnrichTransaction enriches a single payment transaction synchronously.
 	EnrichTransaction(ctx context.Context, req *EnrichmentRequest) (*EnrichmentResponse, error)
+
+	// EnrichTransactions submits a bulk enrichment request asynchronously
+	// and returns a job ID and download link.
+	EnrichTransactions(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
+
+	// GetEnrichmentStatus returns the processing status of a bulk enrichment job.
+	GetEnrichmentStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error)
+
+	// --- Backward-compatible aliases (retained for existing integrations) ---
+
+	// EnrichTransactionCollection is an alias for EnrichTransactions.
 	EnrichTransactionCollection(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
+
+	// EnrichTransactionCollectionStatus is an alias for GetEnrichmentStatus.
 	EnrichTransactionCollectionStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error)
+
+	// DownloadEnrichmentCollection downloads and decodes a bulk enrichment result tarball.
 	DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error)
 }
 
-// apiError reads the response body and attempts to parse it into an *ErrorResponse.
-// It always closes the body.
-func apiError(resp *http.Response, op string) error {
-	var body []byte
-	if resp.Body != nil {
-		defer func() { _ = resp.Body.Close() }()
-		body, _ = io.ReadAll(io.LimitReader(resp.Body, 4096))
-	}
-
-	if len(body) > 0 {
-		var errResp ErrorResponse
-		if err := json.Unmarshal(body, &errResp); err == nil && len(errResp.Errors) > 0 {
-			errResp.HTTPStatusCode = resp.StatusCode
-			return fmt.Errorf("xyo: %s: %w", op, &errResp)
-		}
-
-		// Fallback for non-JSON or unexpected error payloads
-		return fmt.Errorf("xyo: %s: status %d: %s", op, resp.StatusCode, string(bytes.TrimSpace(body)))
-	}
-
-	return fmt.Errorf("xyo: %s: status %d", op, resp.StatusCode)
-}
-
 // EnrichTransaction enriches a single payment transaction.
-func (c *client) EnrichTransaction(ctx context.Context, enrichmentReq *EnrichmentRequest) (*EnrichmentResponse, error) {
-	requestBody, err := json.Marshal(enrichmentReq)
+func (c *client) EnrichTransaction(ctx context.Context, req *EnrichmentRequest) (*EnrichmentResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("xyo: EnrichTransaction: request is nil")
+	}
+
+	genReq := openapi.NewEnrichmentRequest(req.Content, req.CountryCode)
+	resp, httpResp, err := c.apiClient.EnrichmentAPI.EnrichTransaction(ctx).EnrichmentRequest(*genReq).Execute()
 	if err != nil {
-		return nil, fmt.Errorf("xyo: enrich transaction: marshal request: %w", err)
+		return nil, parseOpenAPIError(err, "EnrichTransaction", httpResp)
 	}
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		fmt.Sprintf("%s/v1/ai/finance/enrichment/transaction", c.apiBaseURL),
-		bytes.NewReader(requestBody),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("xyo: enrich transaction: build request: %w", err)
-	}
-
-	internal.MandatoryAPIHeaders(req, c.apiKey)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("xyo: enrich transaction: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, apiError(resp, "enrich transaction")
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	var result EnrichmentResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("xyo: enrich transaction: decode response: %w", err)
-	}
-
-	return &result, nil
+	return &EnrichmentResponse{
+		Merchant:    resp.GetMerchant(),
+		Description: resp.GetDescription(),
+		Categories:  resp.GetCategories(),
+		Logo:        resp.GetLogo(),
+		Location:    resp.GetLocation(),
+		Address:     resp.GetAddress(),
+	}, nil
 }
 
-// EnrichTransactionCollection submits a bulk enrichment request.
-// Unlike EnrichTransaction, this method won't produce enrichment results instantly.
-// It returns a job ID and download link; use EnrichTransactionCollectionStatus to
-// poll for completion.
-func (c *client) EnrichTransactionCollection(ctx context.Context, enrichmentReq []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
-	requestBody, err := json.Marshal(enrichmentReq)
+// EnrichTransactions submits a bulk enrichment request asynchronously.
+func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
+	items := make([]openapi.EnrichTransactionsRequestInner, 0, len(reqs))
+	for i, req := range reqs {
+		if req == nil {
+			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d is nil", i)
+		}
+		items = append(items, openapi.EnrichTransactionsRequestInner{
+			Content:     &req.Content,
+			CountryCode: &req.CountryCode,
+		})
+	}
+
+	resp, httpResp, err := c.apiClient.EnrichmentAPI.EnrichTransactions(ctx).
+		EnrichTransactionsRequestInner(items).Execute()
 	if err != nil {
-		return nil, fmt.Errorf("xyo: enrich transaction collection: marshal request: %w", err)
+		return nil, parseOpenAPIError(err, "EnrichTransactions", httpResp)
 	}
 
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions", c.apiBaseURL),
-		bytes.NewReader(requestBody),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("xyo: enrich transaction collection: build request: %w", err)
-	}
-
-	internal.MandatoryAPIHeaders(req, c.apiKey)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("xyo: enrich transaction collection: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, apiError(resp, "enrich transaction collection")
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	var result EnrichTransactionCollectionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("xyo: enrich transaction collection: decode response: %w", err)
-	}
-
-	return &result, nil
+	return &EnrichTransactionCollectionResponse{
+		ID:   resp.GetId(),
+		Link: resp.GetLink(),
+	}, nil
 }
 
-// EnrichTransactionCollectionStatus returns the processing status of a bulk enrichment job.
-// id is the ID returned by EnrichTransactionCollection.
+// GetEnrichmentStatus returns the processing status of a bulk enrichment job.
+func (c *client) GetEnrichmentStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error) {
+	resp, httpResp, err := c.apiClient.EnrichmentAPI.GetEnrichmentStatus(ctx, id).Execute()
+	if err != nil {
+		return "", parseOpenAPIError(err, "GetEnrichmentStatus", httpResp)
+	}
+
+	return EnrichmentCollectionStatus(resp.GetStatus()), nil
+}
+
+// --- Backward-compatible alias methods ---
+
+// EnrichTransactionCollection is an alias for EnrichTransactions.
+func (c *client) EnrichTransactionCollection(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
+	return c.EnrichTransactions(ctx, reqs)
+}
+
+// EnrichTransactionCollectionStatus is an alias for GetEnrichmentStatus.
 func (c *client) EnrichTransactionCollectionStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error) {
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		fmt.Sprintf("%s/v1/ai/finance/enrichment/transactions/status/%s", c.apiBaseURL, id),
-		nil,
-	)
-	if err != nil {
-		return "", fmt.Errorf("xyo: enrich transaction collection status: build request: %w", err)
-	}
-
-	internal.MandatoryAPIHeaders(req, c.apiKey)
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("xyo: enrich transaction collection status: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", apiError(resp, "enrich transaction collection status")
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	var result enrichmentCollectionStatusResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("xyo: enrich transaction collection status: decode response: %w", err)
-	}
-
-	return result.Status, nil
+	return c.GetEnrichmentStatus(ctx, id)
 }
 
-// DownloadEnrichmentCollection downloads and decodes a bulk enrichment result tarball.
-// It performs streaming decompression and unmarshaling.
+// DownloadEnrichmentCollection downloads and decodes a bulk enrichment result tarball
+// from the URL returned by EnrichTransactions.
 func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("xyo: download enrichment collection: build request: %w", err)
+		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	if userAgent := c.apiClient.GetConfig().UserAgent; userAgent != "" {
+		req.Header.Set("User-Agent", userAgent)
 	}
 
-	internal.MandatoryAPIHeaders(req, c.apiKey)
+	// Only attach Authorization header if download URL matches the configured API host
+	if parsedDownloadURL, err := url.Parse(downloadURL); err == nil {
+		if parsedBaseURL, err := url.Parse(c.apiBaseURL); err == nil {
+			if parsedDownloadURL.Host == parsedBaseURL.Host {
+				if authHeader, ok := c.apiClient.GetConfig().DefaultHeader["Authorization"]; ok {
+					req.Header.Set("Authorization", authHeader)
+				}
+			}
+		}
+	}
 
-	resp, err := c.http.Do(req)
+	httpCl := c.apiClient.GetConfig().HTTPClient
+	if httpCl == nil {
+		httpCl = http.DefaultClient
+	}
+
+	resp, err := httpCl.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("xyo: download enrichment collection: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, apiError(resp, "download enrichment collection")
+		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		var errResp ErrorResponse
+		if json.Unmarshal(body, &errResp) == nil && len(errResp.Errors) > 0 {
+			errResp.HTTPStatusCode = resp.StatusCode
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: %w", &errResp)
+		}
+		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: status %d", resp.StatusCode)
+	}
+
 	gzReader, err := gzip.NewReader(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("xyo: download enrichment collection: gzip stream: %w", err)
+		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: gzip stream: %w", err)
 	}
 	defer func() { _ = gzReader.Close() }()
 
@@ -231,20 +203,18 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 
 	for {
 		header, err := tarReader.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("xyo: download enrichment collection: tar next: %w", err)
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: tar next: %w", err)
 		}
-
 		if header.Typeflag != tar.TypeReg {
-			continue // Skip directories or symlinks
+			continue
 		}
-
 		var result EnrichmentResponse
 		if err := json.NewDecoder(tarReader).Decode(&result); err != nil {
-			return nil, fmt.Errorf("xyo: download enrichment collection: decode json from %s: %w", header.Name, err)
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: decode json from %s: %w", header.Name, err)
 		}
 		results = append(results, &result)
 	}
