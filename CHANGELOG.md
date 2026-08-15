@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Authorization header cross-host leak prevention on downloads.
 - Automatic secret token redaction in OpenAPI client debug logging (`Authorization`, `Proxy-Authorization`, `Cookie`).
 - Bounded response body reading across all OpenAPI endpoints (`maxResponseBytes = 32MiB`).
+- Enterprise connection-pooled transport (`DefaultEnterpriseTransport` / `NewDefaultHTTPClient`) with `MaxIdleConnsPerHost = 100` to prevent TCP `TIME_WAIT` socket exhaustion under heavy concurrent load.
 - Dedicated SDK version constants in `version.go` (`Version`, `DefaultUserAgent`).
 - Modern Go 1.22 minimum toolchain support across `go.mod`, CI workflows, Docker, and examples.
 

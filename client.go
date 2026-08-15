@@ -2,6 +2,7 @@ package xyo
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -12,6 +13,35 @@ import (
 const defaultAPIBaseURL = "https://api.xyo.financial"
 const defaultTimeout = 30 * time.Second
 
+// DefaultEnterpriseTransport provides a high-throughput, connection-pooled HTTP transport
+// tuned specifically for high-concurrency enterprise microservices.
+//
+// Unlike Go's http.DefaultTransport which restricts MaxIdleConnsPerHost to 2,
+// DefaultEnterpriseTransport allocates up to 100 idle persistent connections per host,
+// preventing TCP TIME_WAIT socket thrashing and ephemeral port exhaustion under heavy load.
+var DefaultEnterpriseTransport = &http.Transport{
+	Proxy: http.ProxyFromEnvironment,
+	DialContext: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).DialContext,
+	ForceAttemptHTTP2:     true,
+	MaxIdleConns:          100,
+	MaxIdleConnsPerHost:   100,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+}
+
+// NewDefaultHTTPClient returns a production-ready *http.Client configured with a 30-second
+// timeout and the connection-pooled DefaultEnterpriseTransport.
+func NewDefaultHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout:   defaultTimeout,
+		Transport: DefaultEnterpriseTransport.Clone(),
+	}
+}
+
 // ClientConfig configures the XYO API client.
 type ClientConfig struct {
 	// APIKey is required. Obtain from https://xyo.financial/dashboard
@@ -21,8 +51,8 @@ type ClientConfig struct {
 	// Useful for pointing at staging or a local mock server during testing.
 	BaseURL string
 
-	// HTTPClient overrides the default HTTP client. Leave nil to use a client
-	// with a 30-second timeout — the production-safe default.
+	// HTTPClient overrides the default HTTP client. Leave nil to use NewDefaultHTTPClient()
+	// with a 30-second timeout and enterprise connection pooling.
 	HTTPClient *http.Client
 }
 
@@ -57,9 +87,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 
 	httpCl := config.HTTPClient
 	if httpCl == nil {
-		httpCl = &http.Client{
-			Timeout: defaultTimeout,
-		}
+		httpCl = NewDefaultHTTPClient()
 	}
 
 	cfg := openapi.NewConfiguration()

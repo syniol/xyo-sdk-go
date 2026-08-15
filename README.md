@@ -83,7 +83,7 @@ func main() {
 }
 ```
 
-> **Note:** `xyo.Config` is an alias for `xyo.ClientConfig`. You may also configure a custom `BaseURL` (e.g. for staging or mock testing) and a custom `*http.Client` with custom transport or timeout settings.
+> **Note:** `xyo.Config` is an alias for `xyo.ClientConfig`. By default, `NewClient` initializes a production-ready `*http.Client` using `DefaultEnterpriseTransport` (`MaxIdleConnsPerHost = 100`, HTTP/2 enabled) and a 30-second timeout to prevent TCP socket exhaustion under high concurrency. You may also configure a custom `BaseURL` (e.g. for staging or mock testing) and a custom `*http.Client`.
 
 ---
 

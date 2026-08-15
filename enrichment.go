@@ -209,7 +209,7 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 
 	httpCl := c.apiClient.GetConfig().HTTPClient
 	if httpCl == nil {
-		httpCl = &http.Client{Timeout: defaultTimeout}
+		httpCl = NewDefaultHTTPClient()
 	}
 
 	resp, err := httpCl.Do(req)
