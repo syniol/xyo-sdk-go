@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/xyo-financial/sdk-go/v2/openapi"
 )
@@ -126,8 +127,21 @@ func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentReque
 	}, nil
 }
 
+const (
+	// DefaultMaxTarEntries is the maximum number of entries processed from a bulk enrichment tarball.
+	DefaultMaxTarEntries = 50000
+	// DefaultMaxEntryBytes is the maximum allowed size (in bytes) for a single JSON file within the tarball (10 MiB).
+	DefaultMaxEntryBytes = 10 * 1024 * 1024
+	// DefaultMaxArchiveBytes is the maximum total uncompressed bytes allowed across the tarball stream (100 MiB).
+	DefaultMaxArchiveBytes = 100 * 1024 * 1024
+)
+
 // GetEnrichmentStatus returns the processing status of a bulk enrichment job.
 func (c *client) GetEnrichmentStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error) {
+	if id == "" {
+		return "", fmt.Errorf("xyo: GetEnrichmentStatus: id cannot be empty")
+	}
+
 	resp, httpResp, err := c.apiClient.EnrichmentAPI.GetEnrichmentStatus(ctx, id).Execute()
 	if err != nil {
 		return "", parseOpenAPIError(err, "GetEnrichmentStatus", httpResp)
@@ -151,6 +165,10 @@ func (c *client) EnrichTransactionCollectionStatus(ctx context.Context, id strin
 // DownloadEnrichmentCollection downloads and decodes a bulk enrichment result tarball
 // from the URL returned by EnrichTransactions.
 func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error) {
+	if downloadURL == "" {
+		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: downloadURL cannot be empty")
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: build request: %w", err)
@@ -161,9 +179,11 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 	}
 
 	// Only attach Authorization header if download URL matches the configured API host
-	if parsedDownloadURL, err := url.Parse(downloadURL); err == nil {
-		if parsedBaseURL, err := url.Parse(c.apiBaseURL); err == nil {
-			if parsedDownloadURL.Host == parsedBaseURL.Host {
+	parsedDownloadURL, parseDownloadErr := url.Parse(downloadURL)
+	if parseDownloadErr == nil && parsedDownloadURL.Host != "" {
+		parsedBaseURL, parseBaseErr := url.Parse(c.apiBaseURL)
+		if parseBaseErr == nil && parsedBaseURL.Host != "" {
+			if strings.EqualFold(parsedDownloadURL.Host, parsedBaseURL.Host) {
 				if authHeader, ok := c.apiClient.GetConfig().DefaultHeader["Authorization"]; ok {
 					req.Header.Set("Authorization", authHeader)
 				}
@@ -173,7 +193,7 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 
 	httpCl := c.apiClient.GetConfig().HTTPClient
 	if httpCl == nil {
-		httpCl = http.DefaultClient
+		httpCl = &http.Client{Timeout: defaultTimeout}
 	}
 
 	resp, err := httpCl.Do(req)
@@ -192,16 +212,23 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: status %d", resp.StatusCode)
 	}
 
-	gzReader, err := gzip.NewReader(resp.Body)
+	// Limit total compressed stream and decompressed stream to prevent decompression bombs
+	limitedBody := io.LimitReader(resp.Body, DefaultMaxArchiveBytes)
+	gzReader, err := gzip.NewReader(limitedBody)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: gzip stream: %w", err)
 	}
 	defer func() { _ = gzReader.Close() }()
 
-	tarReader := tar.NewReader(gzReader)
+	limitedTarStream := io.LimitReader(gzReader, DefaultMaxArchiveBytes)
+	tarReader := tar.NewReader(limitedTarStream)
 	var results []*EnrichmentResponse
 
-	for {
+	for entryCount := 0; ; entryCount++ {
+		if entryCount >= DefaultMaxTarEntries {
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: tarball contains too many entries (exceeds limit of %d)", DefaultMaxTarEntries)
+		}
+
 		header, err := tarReader.Next()
 		if errors.Is(err, io.EOF) {
 			break
@@ -212,8 +239,13 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		if header.Typeflag != tar.TypeReg {
 			continue
 		}
+		if header.Size > DefaultMaxEntryBytes {
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: entry %q exceeds maximum allowed size (%d bytes > %d bytes)", header.Name, header.Size, DefaultMaxEntryBytes)
+		}
+
 		var result EnrichmentResponse
-		if err := json.NewDecoder(tarReader).Decode(&result); err != nil {
+		entryReader := io.LimitReader(tarReader, DefaultMaxEntryBytes)
+		if err := json.NewDecoder(entryReader).Decode(&result); err != nil {
 			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: decode json from %s: %w", header.Name, err)
 		}
 		results = append(results, &result)

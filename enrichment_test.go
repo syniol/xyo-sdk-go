@@ -373,3 +373,63 @@ func TestNewClient_ConfigAlias(t *testing.T) {
 		t.Fatal("expected non-nil client")
 	}
 }
+
+func TestGetEnrichmentStatus_EmptyID(t *testing.T) {
+	_, client := newTestServerAndClient(t, http.MethodGet, "/v1/ai/finance/enrichment/status/test", http.StatusOK, nil)
+	_, err := client.GetEnrichmentStatus(context.Background(), "")
+	if err == nil {
+		t.Fatal("expected error for empty id, got nil")
+	}
+}
+
+func TestDownloadEnrichmentCollection_EmptyURL(t *testing.T) {
+	_, client := newTestServerAndClient(t, http.MethodGet, "/downloads/123.tar.gz", http.StatusOK, nil)
+	_, err := client.DownloadEnrichmentCollection(context.Background(), "")
+	if err == nil {
+		t.Fatal("expected error for empty download URL, got nil")
+	}
+}
+
+func TestDownloadEnrichmentCollection_ExceedsMaxEntrySize(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var buf bytes.Buffer
+		gzw := gzip.NewWriter(&buf)
+		tw := tar.NewWriter(gzw)
+
+		// Create header claiming size exceeds DefaultMaxEntryBytes
+		_ = tw.WriteHeader(&tar.Header{
+			Name:     "bomb.json",
+			Mode:     0600,
+			Size:     DefaultMaxEntryBytes + 1024,
+			Typeflag: tar.TypeReg,
+		})
+		_ = tw.Close()
+		_ = gzw.Close()
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(buf.Bytes())
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(&ClientConfig{
+		APIKey:  "test-api-key",
+		BaseURL: ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	_, err = client.DownloadEnrichmentCollection(context.Background(), ts.URL+"/bomb.tar.gz")
+	if err == nil {
+		t.Fatal("expected error when entry size exceeds limit, got nil")
+	}
+}
+
+func TestVersionConstants(t *testing.T) {
+	if Version == "" {
+		t.Error("expected non-empty Version")
+	}
+	if DefaultUserAgent != "xyo-sdk-go/"+Version {
+		t.Errorf("expected DefaultUserAgent 'xyo-sdk-go/%s', got %q", Version, DefaultUserAgent)
+	}
+}
