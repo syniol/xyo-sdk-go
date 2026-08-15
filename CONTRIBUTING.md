@@ -1,4 +1,4 @@
-# Contributing to XYO.Financial Go SDK
+# 🤝 Contributing to XYO.Financial Go SDK
 
 Thank you for your interest in the XYO.Financial Go SDK (`github.com/xyo-financial/sdk-go/v2`).
 
@@ -6,7 +6,7 @@ This document outlines the architecture, contribution workflow, code generation 
 
 ---
 
-## 1. Contribution Policy & Issue Reporting
+## 📋 1. Contribution Policy & Issue Reporting
 
 ### Contribution Policy
 Development, pull request reviews, and package publishing are maintained by **Syniol Limited** engineers. 
@@ -24,7 +24,7 @@ If you discover a bug, have questions, or wish to propose an enhancement:
 
 ---
 
-## 2. Two-Layer Architecture
+## 🏗 2. Two-Layer Architecture
 
 The XYO Go SDK employs a **Two-Layer Architecture** designed to separate raw HTTP protocol serialization from developer ergonomics, reliability, and idiomatic Go idioms.
 
@@ -71,13 +71,13 @@ The XYO Go SDK employs a **Two-Layer Architecture** designed to separate raw HTT
 ### Layer 2: Ergonomic Wrapper Layer (`client.go`, `enrichment.go`, `errors.go`)
 - **Source:** Hand-crafted Go code written and maintained directly in this repository.
 - **Purpose:** Provides a clean, ergonomic, and idiomatic Go interface for developers:
-  - [`client.go`](file:///Users/hadi/dev/start-ups/xyo/sdks/golang/client.go): Configures and instantiates the [`Client`](file:///Users/hadi/dev/start-ups/xyo/sdks/golang/client.go) interface with [`ClientConfig`](file:///Users/hadi/dev/start-ups/xyo/sdks/golang/client.go), default production timeouts (30s), Bearer token injection, and customizable HTTP transports.
-  - [`enrichment.go`](file:///Users/hadi/dev/start-ups/xyo/sdks/golang/enrichment.go): Exposes the [`Enrichment`](file:///Users/hadi/dev/start-ups/xyo/sdks/golang/enrichment.go) interface with methods like `EnrichTransaction`, `EnrichTransactions`, `GetEnrichmentStatus`, and `DownloadEnrichmentCollection` (handling `tar.gz` streaming decompressions), with full `context.Context` cancellation support.
-  - [`errors.go`](file:///Users/hadi/dev/start-ups/xyo/sdks/golang/errors.go): Translates low-level OpenAPI and HTTP errors into structured [`ErrorResponse`](file:///Users/hadi/dev/start-ups/xyo/sdks/golang/errors.go) and [`APIError`](file:///Users/hadi/dev/start-ups/xyo/sdks/golang/errors.go) objects conforming to RFC 7807 problem details, preserving HTTP status codes and actionable error messages.
+  - [`client.go`](client.go): Configures and instantiates the `Client` interface with `ClientConfig`, default production timeouts (30s), Bearer token injection, and customizable HTTP transports.
+  - [`enrichment.go`](enrichment.go): Exposes the `Enrichment` interface with methods like `EnrichTransaction`, `EnrichTransactions`, `GetEnrichmentStatus`, and `DownloadEnrichmentCollection` (handling `tar.gz` streaming decompressions), with full `context.Context` cancellation support.
+  - [`errors.go`](errors.go): Translates low-level OpenAPI and HTTP errors into structured `ErrorResponse` and `APIError` objects conforming to RFC 7807 problem details, preserving HTTP status codes and actionable error messages.
 
 ---
 
-## 3. Contribution Workflow & Decision Matrix
+## 🔀 3. Contribution Workflow & Decision Matrix
 
 To maintain integrity across the XYO SDK ecosystem, determine where your proposed change belongs:
 
@@ -92,7 +92,7 @@ To maintain integrity across the XYO SDK ecosystem, determine where your propose
 
 ---
 
-## 4. Code Generation
+## ⚙️ 4. Code Generation
 
 ### Automated Upstream Synchronization
 When a new release tag is pushed to [`xyo-financial/specs`](https://github.com/xyo-financial/specs), a GitHub Actions workflow automatically sends a dispatch event to this repository. The [`.github/workflows/generate.yml`](.github/workflows/generate.yml) workflow:
@@ -139,7 +139,7 @@ rm -rf openapi/test openapi/docs openapi/api
 
 ---
 
-## 5. Quality Gates & Local Verification
+## 🛡 5. Quality Gates & Local Verification
 
 All contributions must satisfy the following quality gates before being merged:
 
@@ -185,7 +185,7 @@ make build
 
 ---
 
-## 6. Pull Request & Release Process
+## 🚀 6. Pull Request & Release Process
 
 ### Branching and Commits
 1. Branch from `main` using descriptive branch names (e.g. `feat/enrichment-retry`, `fix/error-unmarshaling`).
@@ -210,3 +210,9 @@ Releases follow [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`
    - Sign and publish GitHub Artifact Attestations (build provenance).
    - Publish a GitHub Release with all cryptographic verification assets.
    - Execute verification tests on the example application.
+
+---
+
+## 📄 7. License
+
+By contributing to the XYO Financial Go SDK, you agree that your contributions will be licensed under the **Apache License, Version 2.0** (`Apache-2.0`). See the [LICENSE](LICENSE) file for details.
