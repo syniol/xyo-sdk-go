@@ -137,7 +137,6 @@ func (o *EnrichmentRequest) UnmarshalJSON(data []byte) (err error) {
 	varEnrichmentRequest := _EnrichmentRequest{}
 
 	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&varEnrichmentRequest)
 
 	if err != nil {

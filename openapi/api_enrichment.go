@@ -19,6 +19,7 @@ import (
 	"strings"
 )
 
+const maxResponseBytes = 32 * 1024 * 1024 // 32 MiB response read limit
 
 // EnrichmentAPIService EnrichmentAPI service
 type EnrichmentAPIService service
@@ -103,7 +104,7 @@ func (a *EnrichmentAPIService) EnrichTransactionExecute(r ApiEnrichTransactionRe
 		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
+	localVarBody, err := io.ReadAll(io.LimitReader(localVarHTTPResponse.Body, maxResponseBytes))
 	localVarHTTPResponse.Body.Close()
 	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
 	if err != nil {
@@ -240,7 +241,7 @@ func (a *EnrichmentAPIService) EnrichTransactionsExecute(r ApiEnrichTransactions
 		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
+	localVarBody, err := io.ReadAll(io.LimitReader(localVarHTTPResponse.Body, maxResponseBytes))
 	localVarHTTPResponse.Body.Close()
 	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
 	if err != nil {
@@ -373,7 +374,7 @@ func (a *EnrichmentAPIService) GetEnrichmentStatusExecute(r ApiGetEnrichmentStat
 		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
-	localVarBody, err := io.ReadAll(localVarHTTPResponse.Body)
+	localVarBody, err := io.ReadAll(io.LimitReader(localVarHTTPResponse.Body, maxResponseBytes))
 	localVarHTTPResponse.Body.Close()
 	localVarHTTPResponse.Body = io.NopCloser(bytes.NewBuffer(localVarBody))
 	if err != nil {

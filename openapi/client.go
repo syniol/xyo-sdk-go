@@ -247,7 +247,17 @@ func parameterToJson(obj interface{}) (string, error) {
 // callAPI do the request.
 func (c *APIClient) callAPI(request *http.Request) (*http.Response, error) {
 	if c.cfg.Debug {
-		dump, err := httputil.DumpRequestOut(request, true)
+		clonedReq := request.Clone(request.Context())
+		if clonedReq.Header.Get("Authorization") != "" {
+			clonedReq.Header.Set("Authorization", "[REDACTED]")
+		}
+		if clonedReq.Header.Get("Proxy-Authorization") != "" {
+			clonedReq.Header.Set("Proxy-Authorization", "[REDACTED]")
+		}
+		if clonedReq.Header.Get("Cookie") != "" {
+			clonedReq.Header.Set("Cookie", "[REDACTED]")
+		}
+		dump, err := httputil.DumpRequestOut(clonedReq, true)
 		if err != nil {
 			return nil, err
 		}

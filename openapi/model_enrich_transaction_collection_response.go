@@ -137,7 +137,6 @@ func (o *EnrichTransactionCollectionResponse) UnmarshalJSON(data []byte) (err er
 	varEnrichTransactionCollectionResponse := _EnrichTransactionCollectionResponse{}
 
 	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&varEnrichTransactionCollectionResponse)
 
 	if err != nil {

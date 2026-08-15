@@ -253,7 +253,6 @@ func (o *EnrichmentResponse) UnmarshalJSON(data []byte) (err error) {
 	varEnrichmentResponse := _EnrichmentResponse{}
 
 	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&varEnrichmentResponse)
 
 	if err != nil {
