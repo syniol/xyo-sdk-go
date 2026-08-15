@@ -348,9 +348,10 @@ func TestDownloadEnrichmentCollection_ExternalHostNoAuthLeak(t *testing.T) {
 	})
 
 	client, err := NewClient(&ClientConfig{
-		APIKey:     "secret-token",
-		BaseURL:    "https://api.xyo.financial",
-		HTTPClient: &http.Client{Transport: customTransport},
+		APIKey:               "secret-token",
+		BaseURL:              "https://api.xyo.financial",
+		HTTPClient:           &http.Client{Transport: customTransport},
+		TrustedDownloadHosts: []string{"xyo-enrichment-results.s3.amazonaws.com"},
 	})
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
@@ -691,5 +692,88 @@ func TestClient_Close(t *testing.T) {
 	}
 	if err := client.Close(); err != nil {
 		t.Fatalf("client.Close() failed: %v", err)
+	}
+}
+
+func TestEnrichmentRequest_Validate_UTF8MultiByte(t *testing.T) {
+	// 120 characters with multi-byte symbols (takes >130 bytes, but <= 128 runes)
+	multiByteContent := "Café de Paris £100 €50 ¥1000 — Payment description with international currency symbols and accents ☕"
+	req := &EnrichmentRequest{
+		Content:     multiByteContent,
+		CountryCode: "FR",
+	}
+	if err := req.Validate(); err != nil {
+		t.Fatalf("expected valid multi-byte request, got: %v", err)
+	}
+
+	// 129 runes should fail
+	tooLongRunes := strings.Repeat("€", 129)
+	reqTooLong := &EnrichmentRequest{
+		Content:     tooLongRunes,
+		CountryCode: "FR",
+	}
+	if err := reqTooLong.Validate(); err == nil {
+		t.Fatal("expected error for 129 runes, got nil")
+	}
+}
+
+func TestMultiTenant_OptionsAndCRLFRejection(t *testing.T) {
+	var capturedUserHeader string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedUserHeader = r.Header.Get("x-api-user")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if r.Method == http.MethodPost {
+			_, _ = w.Write([]byte(`{"id":"job-tenant-123","link":"https://api.xyo.financial/downloads/job.tar.gz"}`))
+		} else {
+			_, _ = w.Write([]byte(`{"status":"READY"}`))
+		}
+	}))
+	t.Cleanup(ts.Close)
+
+	client, err := NewClient(&ClientConfig{
+		APIKey:  "test-api-key",
+		BaseURL: ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	// 1. EnrichTransactionsWithOptions sends x-api-user header
+	_, err = client.EnrichTransactionsWithOptions(context.Background(), []*EnrichmentRequest{
+		{Content: "Uber Ride", CountryCode: "US"},
+	}, &BulkEnrichmentOptions{APIUser: "jpmc-retail-dept-12"})
+	if err != nil {
+		t.Fatalf("EnrichTransactionsWithOptions failed: %v", err)
+	}
+	if capturedUserHeader != "jpmc-retail-dept-12" {
+		t.Errorf("expected x-api-user header 'jpmc-retail-dept-12', got %q", capturedUserHeader)
+	}
+
+	// 2. GetEnrichmentStatusWithOptions sends x-api-user header
+	capturedUserHeader = ""
+	status, err := client.GetEnrichmentStatusWithOptions(context.Background(), "job-tenant-123", &BulkEnrichmentOptions{APIUser: "jpmc-retail-dept-12"})
+	if err != nil {
+		t.Fatalf("GetEnrichmentStatusWithOptions failed: %v", err)
+	}
+	if status != EnrichmentCollectionStatusReady {
+		t.Errorf("expected READY status, got %v", status)
+	}
+	if capturedUserHeader != "jpmc-retail-dept-12" {
+		t.Errorf("expected x-api-user header 'jpmc-retail-dept-12', got %q", capturedUserHeader)
+	}
+
+	// 3. CRLF rejection
+	_, err = client.EnrichTransactionsWithOptions(context.Background(), []*EnrichmentRequest{
+		{Content: "Uber Ride", CountryCode: "US"},
+	}, &BulkEnrichmentOptions{APIUser: "user\r\ninjected-header: bad"})
+	if err == nil || !strings.Contains(err.Error(), "invalid CRLF") {
+		t.Errorf("expected CRLF error, got: %v", err)
+	}
+
+	_, err = client.GetEnrichmentStatusWithOptions(context.Background(), "job-123", &BulkEnrichmentOptions{APIUser: "user\ninjected: bad"})
+	if err == nil || !strings.Contains(err.Error(), "invalid CRLF") {
+		t.Errorf("expected CRLF error, got: %v", err)
 	}
 }

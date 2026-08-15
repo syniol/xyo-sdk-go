@@ -62,6 +62,10 @@ type ClientConfig struct {
 	// HTTPClient overrides the default HTTP client. Leave nil to use NewDefaultHTTPClient()
 	// with a 30-second timeout and enterprise connection pooling.
 	HTTPClient *http.Client
+
+	// TrustedDownloadHosts specifies permitted hostnames for archive downloads under Zero-Trust policy.
+	// Defaults to api.xyo.financial and download.xyo.financial.
+	TrustedDownloadHosts []string
 }
 
 // Config is an alias for ClientConfig.
@@ -75,10 +79,11 @@ type Client interface {
 }
 
 type client struct {
-	apiBaseURL  string
-	keySupplier func() string
-	apiClient   *openapi.APIClient
-	httpCl      *http.Client
+	apiBaseURL           string
+	keySupplier          func() string
+	trustedDownloadHosts []string
+	apiClient            *openapi.APIClient
+	httpCl               *http.Client
 }
 
 type authRoundTripper struct {
@@ -186,10 +191,16 @@ func NewClient(config *ClientConfig) (Client, error) {
 
 	apiClient := openapi.NewAPIClient(cfg)
 
+	trustedHosts := config.TrustedDownloadHosts
+	if len(trustedHosts) == 0 {
+		trustedHosts = []string{"api.xyo.financial", "download.xyo.financial"}
+	}
+
 	return &client{
-		apiBaseURL:  baseURL,
-		keySupplier: keySupplier,
-		apiClient:   apiClient,
-		httpCl:      rawHTTPCl,
+		apiBaseURL:           baseURL,
+		keySupplier:          keySupplier,
+		trustedDownloadHosts: trustedHosts,
+		apiClient:            apiClient,
+		httpCl:               rawHTTPCl,
 	}, nil
 }

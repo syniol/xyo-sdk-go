@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/xyo-financial/sdk-go/v2/openapi"
 )
@@ -21,6 +22,12 @@ type EnrichmentRequest struct {
 	Content string `json:"content"`
 	// CountryCode is the ISO 3166-1 alpha-2 two-character country code.
 	CountryCode string `json:"countryCode"`
+}
+
+// BulkEnrichmentOptions specifies optional multi-tenant or departmental tracking parameters.
+type BulkEnrichmentOptions struct {
+	// APIUser is the tenant or user ID passed in the x-api-user HTTP header (e.g. for multi-tenant metering).
+	APIUser string
 }
 
 // EnrichmentResponse is the result of a single payment transaction enrichment.
@@ -65,8 +72,14 @@ type Enrichment interface {
 	// and returns a job ID and download link.
 	EnrichTransactions(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
 
+	// EnrichTransactionsWithOptions submits a bulk enrichment request asynchronously with optional multi-tenant options.
+	EnrichTransactionsWithOptions(ctx context.Context, reqs []*EnrichmentRequest, opts *BulkEnrichmentOptions) (*EnrichTransactionCollectionResponse, error)
+
 	// GetEnrichmentStatus returns the processing status of a bulk enrichment job.
 	GetEnrichmentStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error)
+
+	// GetEnrichmentStatusWithOptions returns the processing status with optional multi-tenant options.
+	GetEnrichmentStatusWithOptions(ctx context.Context, id string, opts *BulkEnrichmentOptions) (EnrichmentCollectionStatus, error)
 
 	// --- Backward-compatible aliases (retained for existing integrations) ---
 
@@ -89,14 +102,14 @@ func (r *EnrichmentRequest) Validate() error {
 	if content == "" {
 		return fmt.Errorf("Content cannot be empty")
 	}
-	if len(content) > 128 {
+	if utf8.RuneCountInString(content) > 128 {
 		return fmt.Errorf("Content exceeds maximum allowed length of 128 characters")
 	}
 	countryCode := strings.TrimSpace(r.CountryCode)
 	if countryCode == "" {
 		return fmt.Errorf("CountryCode cannot be empty")
 	}
-	if len(countryCode) != 2 {
+	if utf8.RuneCountInString(countryCode) != 2 {
 		return fmt.Errorf("CountryCode must be exactly 2 characters (ISO 3166-1 alpha-2)")
 	}
 	return nil
@@ -129,8 +142,19 @@ func (c *client) EnrichTransaction(ctx context.Context, req *EnrichmentRequest) 
 
 // EnrichTransactions submits a bulk enrichment request asynchronously.
 func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
+	return c.EnrichTransactionsWithOptions(ctx, reqs, nil)
+}
+
+// EnrichTransactionsWithOptions submits a bulk enrichment request asynchronously with optional multi-tenant options.
+func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*EnrichmentRequest, opts *BulkEnrichmentOptions) (*EnrichTransactionCollectionResponse, error) {
 	if len(reqs) == 0 {
 		return nil, fmt.Errorf("xyo: EnrichTransactions: reqs slice cannot be empty")
+	}
+
+	if opts != nil && opts.APIUser != "" {
+		if strings.ContainsAny(opts.APIUser, "\r\n") {
+			return nil, fmt.Errorf("xyo: EnrichTransactions: apiUser contains invalid CRLF characters")
+		}
 	}
 
 	items := make([]openapi.EnrichTransactionsRequestInner, 0, len(reqs))
@@ -144,8 +168,14 @@ func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentReque
 		})
 	}
 
-	resp, httpResp, err := c.apiClient.EnrichmentAPI.EnrichTransactions(ctx).
-		EnrichTransactionsRequestInner(items).Execute()
+	apiReq := c.apiClient.EnrichmentAPI.EnrichTransactions(ctx).
+		EnrichTransactionsRequestInner(items)
+
+	if opts != nil && opts.APIUser != "" {
+		apiReq = apiReq.XApiUser(opts.APIUser)
+	}
+
+	resp, httpResp, err := apiReq.Execute()
 	if httpResp != nil && httpResp.Body != nil {
 		defer func() { _ = httpResp.Body.Close() }()
 	}
@@ -179,7 +209,7 @@ func (m *maxBytesReader) Read(p []byte) (int, error) {
 	n, err := m.r.Read(p)
 	m.read += int64(n)
 	if m.read > m.limit {
-		return n, fmt.Errorf("xyo: %s exceeded maximum allowed size of %d bytes", m.desc, m.limit)
+		return n, fmt.Errorf("xyo: %s exceeded maximum limit of %d bytes", m.desc, m.limit)
 	}
 	return n, err
 }
@@ -193,13 +223,30 @@ func sanitizeTarEntryName(name string) string {
 	}, name)
 }
 
-// GetEnrichmentStatus returns the processing status of a bulk enrichment job.
+// GetEnrichmentStatus polls the status of an asynchronous bulk enrichment job by work ID.
 func (c *client) GetEnrichmentStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error) {
+	return c.GetEnrichmentStatusWithOptions(ctx, id, nil)
+}
+
+// GetEnrichmentStatusWithOptions polls the status of an asynchronous bulk enrichment job with optional multi-tenant options.
+func (c *client) GetEnrichmentStatusWithOptions(ctx context.Context, id string, opts *BulkEnrichmentOptions) (EnrichmentCollectionStatus, error) {
+	id = strings.TrimSpace(id)
 	if id == "" {
 		return "", fmt.Errorf("xyo: GetEnrichmentStatus: id cannot be empty")
 	}
 
-	resp, httpResp, err := c.apiClient.EnrichmentAPI.GetEnrichmentStatus(ctx, id).Execute()
+	if opts != nil && opts.APIUser != "" {
+		if strings.ContainsAny(opts.APIUser, "\r\n") {
+			return "", fmt.Errorf("xyo: GetEnrichmentStatus: apiUser contains invalid CRLF characters")
+		}
+	}
+
+	apiReq := c.apiClient.EnrichmentAPI.GetEnrichmentStatus(ctx, id)
+	if opts != nil && opts.APIUser != "" {
+		apiReq = apiReq.XApiUser(opts.APIUser)
+	}
+
+	resp, httpResp, err := apiReq.Execute()
 	if httpResp != nil && httpResp.Body != nil {
 		defer func() { _ = httpResp.Body.Close() }()
 	}
@@ -246,21 +293,31 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		req.Header.Set("User-Agent", userAgent)
 	}
 
-	// Validate permitted domain for secure archive download (API host or S3) and attach auth only for API host
+	// Validate permitted domain for secure archive download under Zero-Trust policy
 	if parsedDownloadURL.Host != "" {
+		isAllowed := false
 		parsedBaseURL, parseBaseErr := url.Parse(c.apiBaseURL)
-		if parseBaseErr == nil && parsedBaseURL.Host != "" {
-			isAPIHost := strings.EqualFold(parsedDownloadURL.Host, parsedBaseURL.Host)
-			isS3 := strings.HasSuffix(strings.ToLower(parsedDownloadURL.Hostname()), ".amazonaws.com")
-			if !isAPIHost && !isS3 {
-				return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: domain %q is not permitted for secure archive downloads", parsedDownloadURL.Host)
-			}
-			if isAPIHost {
-				if c.keySupplier != nil {
-					if key := c.keySupplier(); key != "" {
-						req.Header.Set("Authorization", "Bearer "+key)
-					}
+		isAPIHost := parseBaseErr == nil && parsedBaseURL.Host != "" && strings.EqualFold(parsedDownloadURL.Host, parsedBaseURL.Host)
+		if isAPIHost {
+			isAllowed = true
+		} else {
+			downHost := parsedDownloadURL.Host
+			downHostname := parsedDownloadURL.Hostname()
+			for _, trusted := range c.trustedDownloadHosts {
+				if strings.EqualFold(downHost, trusted) || strings.EqualFold(downHostname, trusted) || strings.HasSuffix(strings.ToLower(downHostname), "."+strings.ToLower(trusted)) {
+					isAllowed = true
+					break
 				}
+			}
+		}
+
+		if !isAllowed {
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: domain %q is not permitted for secure archive downloads", parsedDownloadURL.Host)
+		}
+
+		if isAPIHost && c.keySupplier != nil {
+			if key := c.keySupplier(); key != "" {
+				req.Header.Set("Authorization", "Bearer "+key)
 			}
 		}
 	}
