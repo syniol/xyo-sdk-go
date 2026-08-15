@@ -486,3 +486,32 @@ func TestEnrichTransaction_ForwardCompatibilityUnknownFields(t *testing.T) {
 		t.Errorf("expected merchant %q, got %q", "Syniol Limited", resp.Merchant)
 	}
 }
+
+func TestDefaultEnterpriseTransport(t *testing.T) {
+	if DefaultEnterpriseTransport == nil {
+		t.Fatal("expected DefaultEnterpriseTransport to not be nil")
+	}
+	if DefaultEnterpriseTransport.MaxIdleConnsPerHost < 100 {
+		t.Errorf("expected MaxIdleConnsPerHost >= 100, got %d", DefaultEnterpriseTransport.MaxIdleConnsPerHost)
+	}
+	if !DefaultEnterpriseTransport.ForceAttemptHTTP2 {
+		t.Error("expected ForceAttemptHTTP2 to be true")
+	}
+}
+
+func TestNewDefaultHTTPClient(t *testing.T) {
+	client := NewDefaultHTTPClient()
+	if client == nil {
+		t.Fatal("expected NewDefaultHTTPClient to return non-nil client")
+	}
+	if client.Timeout != defaultTimeout {
+		t.Errorf("expected timeout %v, got %v", defaultTimeout, client.Timeout)
+	}
+	tr, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("expected transport to be *http.Transport, got %T", client.Transport)
+	}
+	if tr.MaxIdleConnsPerHost < 100 {
+		t.Errorf("expected MaxIdleConnsPerHost >= 100, got %d", tr.MaxIdleConnsPerHost)
+	}
+}
