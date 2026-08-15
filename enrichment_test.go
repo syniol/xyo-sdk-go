@@ -515,3 +515,56 @@ func TestNewDefaultHTTPClient(t *testing.T) {
 		t.Errorf("expected MaxIdleConnsPerHost >= 100, got %d", tr.MaxIdleConnsPerHost)
 	}
 }
+
+func TestEnrichTransaction_InputValidation(t *testing.T) {
+	_, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transaction", http.StatusOK, nil)
+
+	t.Run("empty content", func(t *testing.T) {
+		_, err := client.EnrichTransaction(context.Background(), &EnrichmentRequest{
+			Content:     "   ",
+			CountryCode: "GB",
+		})
+		if err == nil {
+			t.Fatal("expected error for empty content, got nil")
+		}
+	})
+
+	t.Run("empty country code", func(t *testing.T) {
+		_, err := client.EnrichTransaction(context.Background(), &EnrichmentRequest{
+			Content:     "Coffee",
+			CountryCode: "  ",
+		})
+		if err == nil {
+			t.Fatal("expected error for empty country code, got nil")
+		}
+	})
+}
+
+func TestEnrichTransactions_InputValidation(t *testing.T) {
+	_, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transactions", http.StatusOK, nil)
+
+	t.Run("empty reqs slice", func(t *testing.T) {
+		_, err := client.EnrichTransactions(context.Background(), []*EnrichmentRequest{})
+		if err == nil {
+			t.Fatal("expected error for empty reqs slice, got nil")
+		}
+	})
+
+	t.Run("empty content in slice", func(t *testing.T) {
+		_, err := client.EnrichTransactions(context.Background(), []*EnrichmentRequest{
+			{Content: "", CountryCode: "GB"},
+		})
+		if err == nil {
+			t.Fatal("expected error for empty content in slice, got nil")
+		}
+	})
+
+	t.Run("empty country code in slice", func(t *testing.T) {
+		_, err := client.EnrichTransactions(context.Background(), []*EnrichmentRequest{
+			{Content: "Valid", CountryCode: ""},
+		})
+		if err == nil {
+			t.Fatal("expected error for empty country code in slice, got nil")
+		}
+	})
+}

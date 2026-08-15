@@ -39,7 +39,7 @@ jobs:
 
       - name: Generate OpenAPI Go client
         run: |
-          npx -y @openapitools/openapi-generator-cli generate \
+          npx -y @openapitools/openapi-generator-cli@2.13.0 generate \
             -i specs/openapi.yml \
             -g go \
             -o openapi \

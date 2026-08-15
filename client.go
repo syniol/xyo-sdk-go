@@ -91,6 +91,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 	}
 
 	cfg := openapi.NewConfiguration()
+	cfg.Debug = false
 	cfg.UserAgent = DefaultUserAgent
 	cfg.Servers = openapi.ServerConfigurations{
 		{
