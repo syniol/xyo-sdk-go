@@ -227,7 +227,6 @@ func (o *APIError) UnmarshalJSON(data []byte) (err error) {
 	varAPIError := _APIError{}
 
 	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&varAPIError)
 
 	if err != nil {

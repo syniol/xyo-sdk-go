@@ -459,3 +459,30 @@ func TestDownloadEnrichmentCollection_InvalidScheme(t *testing.T) {
 		})
 	}
 }
+
+func TestEnrichTransaction_ForwardCompatibilityUnknownFields(t *testing.T) {
+	// Simulate the backend adding new unknown fields in a future API release
+	payload := map[string]interface{}{
+		"merchant":               "Syniol Limited",
+		"description":            "Software Consultancy",
+		"categories":             []string{"Tech"},
+		"logo":                   "base64/png",
+		"location":               "London, UK",
+		"address":                "123 Street",
+		"future_additive_field":  "should_not_break",
+		"another_additive_field": 999,
+	}
+
+	_, client := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transaction", http.StatusOK, payload)
+
+	resp, err := client.EnrichTransaction(context.Background(), &EnrichmentRequest{
+		Content:     "Syniol Test",
+		CountryCode: "GB",
+	})
+	if err != nil {
+		t.Fatalf("expected decode to succeed with unknown fields, got error: %v", err)
+	}
+	if resp.Merchant != "Syniol Limited" {
+		t.Errorf("expected merchant %q, got %q", "Syniol Limited", resp.Merchant)
+	}
+}
