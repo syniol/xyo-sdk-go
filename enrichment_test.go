@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -331,37 +332,65 @@ func TestDownloadEnrichmentCollection_RFC7807Error(t *testing.T) {
 }
 
 func TestDownloadEnrichmentCollection_ExternalHostNoAuthLeak(t *testing.T) {
-	externalServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if auth := r.Header.Get("Authorization"); auth != "" {
-			t.Errorf("expected NO Authorization header for external host, got %q", auth)
-		}
-		w.WriteHeader(http.StatusOK)
-		// Return valid empty tarball
+	var capturedAuth string
+	customTransport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		capturedAuth = req.Header.Get("Authorization")
 		var buf bytes.Buffer
 		gzw := gzip.NewWriter(&buf)
 		tw := tar.NewWriter(gzw)
 		_ = tw.Close()
 		_ = gzw.Close()
-		_, _ = w.Write(buf.Bytes())
-	}))
-	defer externalServer.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewReader(buf.Bytes())),
+			Header:     http.Header{"Content-Type": []string{"application/gzip"}},
+		}, nil
+	})
 
-	// Client is configured with a different base URL
 	client, err := NewClient(&ClientConfig{
-		APIKey:  "secret-token",
-		BaseURL: "https://api.xyo.financial",
+		APIKey:     "secret-token",
+		BaseURL:    "https://api.xyo.financial",
+		HTTPClient: &http.Client{Transport: customTransport},
 	})
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
-	results, err := client.DownloadEnrichmentCollection(context.Background(), externalServer.URL+"/presigned.tar.gz")
+	// 1. Download from S3 domain succeeds and does NOT leak Authorization header
+	results, err := client.DownloadEnrichmentCollection(context.Background(), "https://xyo-enrichment-results.s3.amazonaws.com/results.tar.gz")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(results) != 0 {
 		t.Fatalf("expected 0 results, got %d", len(results))
 	}
+	if capturedAuth != "" {
+		t.Errorf("expected NO Authorization header for S3 download, got %q", capturedAuth)
+	}
+
+	// 2. Download from API base URL host attaches Authorization header
+	_, err = client.DownloadEnrichmentCollection(context.Background(), "https://api.xyo.financial/downloads/results.tar.gz")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if capturedAuth != "Bearer secret-token" {
+		t.Errorf("expected Authorization header for API base URL host, got %q", capturedAuth)
+	}
+
+	// 3. Untrusted rogue domain is rejected
+	_, err = client.DownloadEnrichmentCollection(context.Background(), "https://evil-untrusted-domain.com/data.tar.gz")
+	if err == nil {
+		t.Fatal("expected error for untrusted domain download, got nil")
+	}
+	if !strings.Contains(err.Error(), "not permitted for secure archive downloads") {
+		t.Errorf("expected 'not permitted' error, got %v", err)
+	}
+}
+
+type roundTripFunc func(req *http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
 }
 
 func TestNewClient_ConfigAlias(t *testing.T) {

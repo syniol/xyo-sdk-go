@@ -246,11 +246,16 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		req.Header.Set("User-Agent", userAgent)
 	}
 
-	// Only attach Authorization header if download URL matches the configured API host (prevents token leakage)
+	// Validate permitted domain for secure archive download (API host or S3) and attach auth only for API host
 	if parsedDownloadURL.Host != "" {
 		parsedBaseURL, parseBaseErr := url.Parse(c.apiBaseURL)
 		if parseBaseErr == nil && parsedBaseURL.Host != "" {
-			if strings.EqualFold(parsedDownloadURL.Host, parsedBaseURL.Host) {
+			isAPIHost := strings.EqualFold(parsedDownloadURL.Host, parsedBaseURL.Host)
+			isS3 := strings.HasSuffix(strings.ToLower(parsedDownloadURL.Hostname()), ".amazonaws.com")
+			if !isAPIHost && !isS3 {
+				return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: domain %q is not permitted for secure archive downloads", parsedDownloadURL.Host)
+			}
+			if isAPIHost {
 				if c.keySupplier != nil {
 					if key := c.keySupplier(); key != "" {
 						req.Header.Set("Authorization", "Bearer "+key)
@@ -286,9 +291,7 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 	if ct != "" {
 		ctLower := strings.ToLower(ct)
 		if !strings.Contains(ctLower, "gzip") && !strings.Contains(ctLower, "tar") && !strings.Contains(ctLower, "octet-stream") && !strings.Contains(ctLower, "binary") {
-			previewBuf := make([]byte, 512)
-			n, _ := resp.Body.Read(previewBuf)
-			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: unexpected Content-Type %q (body preview: %s)", ct, string(previewBuf[:n]))
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: unexpected Content-Type %q received when expecting binary archive", ct)
 		}
 	}
 
