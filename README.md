@@ -217,9 +217,13 @@ func main() {
 	jobID := "72c037df-d0d3-43ee-9470-323ff35a2e50"
 	downloadURL := fmt.Sprintf("https://api.xyo.financial/ai/transactions/download/%s.tar.gz", jobID)
 
-	ctx := context.Background()
+	// Poll with timeout and exponential backoff
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
-	// Poll until ready or failed with backoff
+	backoff := 2 * time.Second
+	maxBackoff := 15 * time.Second
+
 	for {
 		status, err := client.GetEnrichmentStatus(ctx, jobID)
 		if err != nil {
@@ -235,7 +239,17 @@ func main() {
 			log.Fatalf("bulk enrichment job %s failed processing on server", jobID)
 		}
 
-		time.Sleep(3 * time.Second)
+		select {
+		case <-ctx.Done():
+			log.Fatalf("timed out waiting for bulk enrichment: %v", ctx.Err())
+		case <-time.After(backoff):
+			if backoff < maxBackoff {
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+			}
+		}
 	}
 
 	// Stream and decompress results on-the-fly
