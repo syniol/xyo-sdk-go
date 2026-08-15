@@ -11,7 +11,7 @@ ENV CGO_ENABLED=0
 RUN apk add --update-cache \
     curl
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/v1.59.1/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.59.1 \
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1 \
     && golangci-lint --version
 
 # Linting (includes gofmt & govet via .golangci.yml) and Tests

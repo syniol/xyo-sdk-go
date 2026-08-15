@@ -9,6 +9,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -27,7 +28,7 @@ func newTestServerAndClient(t *testing.T, expectedMethod, expectedPath string, s
 		if expectedMethod != http.MethodGet && r.Header.Get("Content-Type") != "application/json" {
 			t.Errorf("missing or invalid Content-Type header: %q", r.Header.Get("Content-Type"))
 		}
-		if r.Header.Get("Accept") != "application/json" {
+		if r.Header.Get("Accept") != "" && !strings.Contains(r.Header.Get("Accept"), "application/json") && !strings.Contains(r.Header.Get("Accept"), "application/gzip") {
 			t.Errorf("missing or invalid Accept header: %q", r.Header.Get("Accept"))
 		}
 
@@ -567,4 +568,99 @@ func TestEnrichTransactions_InputValidation(t *testing.T) {
 			t.Fatal("expected error for empty country code in slice, got nil")
 		}
 	})
+}
+
+func TestDynamicApiKeyRotation(t *testing.T) {
+	currentKey := "initial-secret-1"
+	var observedAuthHeaders []string
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		observedAuthHeaders = append(observedAuthHeaders, r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"merchant":    "Starbucks",
+			"description": "Coffee",
+			"categories":  []string{"Food"},
+			"logo":        "https://example.com/logo.png",
+			"location":    "Seattle",
+			"address":     "2401 Utah Ave",
+		})
+	}))
+	t.Cleanup(ts.Close)
+
+	client, err := NewClient(&ClientConfig{
+		APIKeySupplier: func() string { return currentKey },
+		BaseURL:        ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	_, err = client.EnrichTransaction(context.Background(), &EnrichmentRequest{
+		Content:     "Coffee purchase",
+		CountryCode: "US",
+	})
+	if err != nil {
+		t.Fatalf("first call failed: %v", err)
+	}
+
+	// Rotate key at runtime
+	currentKey = "rotated-secret-2"
+	_, err = client.EnrichTransaction(context.Background(), &EnrichmentRequest{
+		Content:     "Coffee purchase 2",
+		CountryCode: "US",
+	})
+	if err != nil {
+		t.Fatalf("second call failed: %v", err)
+	}
+
+	if len(observedAuthHeaders) != 2 {
+		t.Fatalf("expected 2 calls, got %d", len(observedAuthHeaders))
+	}
+	if observedAuthHeaders[0] != "Bearer initial-secret-1" {
+		t.Errorf("expected Bearer initial-secret-1, got %q", observedAuthHeaders[0])
+	}
+	if observedAuthHeaders[1] != "Bearer rotated-secret-2" {
+		t.Errorf("expected Bearer rotated-secret-2, got %q", observedAuthHeaders[1])
+	}
+}
+
+func TestDownloadEnrichmentCollection_UnexpectedContentType_WAF(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("<html><body><h1>Cloudflare / WAF Security Challenge</h1></body></html>"))
+	}))
+	t.Cleanup(ts.Close)
+
+	client, err := NewClient(&ClientConfig{
+		APIKey:  "test-api-key",
+		BaseURL: ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	_, err = client.DownloadEnrichmentCollection(context.Background(), ts.URL+"/download")
+	if err == nil {
+		t.Fatal("expected error for WAF html response, got nil")
+	}
+	if !strings.Contains(err.Error(), "unexpected Content-Type") {
+		t.Errorf("expected unexpected Content-Type error, got %v", err)
+	}
+}
+
+func TestClient_Close(t *testing.T) {
+	client, err := NewClient(&ClientConfig{
+		APIKey: "test-api-key",
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	if err := client.Close(); err != nil {
+		t.Fatalf("client.Close() failed: %v", err)
+	}
 }
