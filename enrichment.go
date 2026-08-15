@@ -85,6 +85,12 @@ func (c *client) EnrichTransaction(ctx context.Context, req *EnrichmentRequest) 
 	if req == nil {
 		return nil, fmt.Errorf("xyo: EnrichTransaction: request is nil")
 	}
+	if strings.TrimSpace(req.Content) == "" {
+		return nil, fmt.Errorf("xyo: EnrichTransaction: Content cannot be empty")
+	}
+	if strings.TrimSpace(req.CountryCode) == "" {
+		return nil, fmt.Errorf("xyo: EnrichTransaction: CountryCode cannot be empty")
+	}
 
 	genReq := openapi.NewEnrichmentRequest(req.Content, req.CountryCode)
 	resp, httpResp, err := c.apiClient.EnrichmentAPI.EnrichTransaction(ctx).EnrichmentRequest(*genReq).Execute()
@@ -107,10 +113,20 @@ func (c *client) EnrichTransaction(ctx context.Context, req *EnrichmentRequest) 
 
 // EnrichTransactions submits a bulk enrichment request asynchronously.
 func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error) {
+	if len(reqs) == 0 {
+		return nil, fmt.Errorf("xyo: EnrichTransactions: reqs slice cannot be empty")
+	}
+
 	items := make([]openapi.EnrichTransactionsRequestInner, 0, len(reqs))
 	for i, req := range reqs {
 		if req == nil {
 			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d is nil", i)
+		}
+		if strings.TrimSpace(req.Content) == "" {
+			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d has empty Content", i)
+		}
+		if strings.TrimSpace(req.CountryCode) == "" {
+			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d has empty CountryCode", i)
 		}
 		items = append(items, openapi.EnrichTransactionsRequestInner{
 			Content:     &req.Content,
