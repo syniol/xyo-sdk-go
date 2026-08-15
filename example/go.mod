@@ -1,6 +1,6 @@
 module example
 
-go 1.18
+go 1.22
 
 require github.com/xyo-financial/sdk-go/v2 v2.0.0
 

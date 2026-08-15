@@ -63,7 +63,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 	}
 
 	cfg := openapi.NewConfiguration()
-	cfg.UserAgent = "xyo-sdk-go/2.0.0"
+	cfg.UserAgent = DefaultUserAgent
 	cfg.Servers = openapi.ServerConfigurations{
 		{
 			URL: baseURL,
