@@ -34,6 +34,8 @@ Maintained by [Syniol Limited](https://syniol.com) as the official Go distributi
 3. **Structured RFC 7807 Error Handling**: API exceptions preserve RFC 7807 problem details (`Type`, `Title`, `Status`, `Detail`, `Instance`) accessible through idiomatic Go 1.13+ error unwrapping (`errors.As`).
 4. **Resilient Streaming**: Bulk collection results are streamed and decompressed on-the-fly (`tar.gz`) directly into memory without requiring temporary disk buffers.
 5. **Zero External Runtime Footprint**: Relies solely on standard Go libraries and deterministic OpenAPI client generation for minimal supply-chain risk.
+6. **Decompression-Bomb Hardened**: The bulk download pipeline enforces three independent safety limits — maximum entry count, maximum entry size, and maximum total archive size — using `io.LimitReader` on both the compressed and decompressed streams, preventing adversarial archives from exhausting host memory.
+7. **Credential-Scoped Downloads**: The `Authorization` header is only attached to requests whose destination host matches the configured API base URL. Downloads redirected to pre-signed S3, GCS, or CDN endpoints never receive the Bearer token.
 
 ---
 
@@ -270,6 +272,14 @@ func main() {
 
 The XYO API adheres to the **RFC 7807 (Problem Details for HTTP APIs)** specification. When an API call fails, the SDK wraps the structured error response in an `*xyo.ErrorResponse` containing one or more `*xyo.APIError` entries.
 
+The SDK implements a **three-tier error parsing cascade** to ensure a structured error is always returned, regardless of how the server or upstream infrastructure (proxies, WAFs, CDN edge nodes) responds:
+
+| Tier | Mechanism | Fires When |
+|:---|:---|:---|
+| **1st** | Typed `openapi.ErrorResponse` model decode | Server returns well-formed `application/json` error body |
+| **2nd** | Raw `[]byte` JSON unmarshal fallback | Server returns valid JSON but with incorrect `Content-Type` |
+| **3rd** | HTTP status code extraction | Server returns HTML, plain text, or an empty body (e.g. `502 Bad Gateway` from a proxy) |
+
 Use `errors.As` for type-safe inspection of error codes and detailed diagnostic reasons:
 
 ```go
@@ -370,9 +380,11 @@ For backward compatibility with earlier integrations, the following alias method
 
 ## 🔒 Security & Compliance
 
-- **Zero Third-Party Runtime Dependencies**: Clean dependency graph adhering to enterprise supply-chain audit policies.
+- **Zero Third-Party Runtime Dependencies**: The entire SDK is built on the Go standard library. The `go.mod` contains no external packages, producing a completely flat dependency graph — no transitive CVE exposure, no supply-chain audit overhead.
 - **Data Minimisation**: Only raw payment descriptions and ISO 3166-1 country codes are transmitted. No card numbers (PAN), CVVs, sort codes, or personally identifiable information (PII) required.
-- **TLS 1.2+ Enforcement**: All requests are routed exclusively over TLS encrypted channels with standard Bearer token authorization headers.
+- **TLS 1.2+ Enforcement**: All requests are routed exclusively over TLS-encrypted channels. Bearer token authorization headers are transmitted only over HTTPS.
+- **Credential-Scoped Downloads**: The `Authorization` header is conditionally attached only when the download URL host matches the configured API base URL. Pre-signed S3, GCS, or CDN download links — which originate from the batch enrichment workflow — are served without the Bearer token, preventing API key leakage to third-party storage providers.
+- **Release Provenance & SBOM**: Every release is published with a cryptographically signed **GitHub Artifact Attestation** (build provenance), an **SPDX Software Bill of Materials**, and a **SHA-256 checksum** — providing SLSA Level 2 supply-chain integrity out of the box.
 
 ---
 
