@@ -11,6 +11,8 @@ linters:
     - gosimple
     - ineffassign
     - typecheck
+    - bodyclose
+    - gosec
 
 issues:
   exclude-dirs:
@@ -27,3 +29,5 @@ issues:
         - staticcheck
         - typecheck
         - unused
+        - bodyclose
+        - gosec

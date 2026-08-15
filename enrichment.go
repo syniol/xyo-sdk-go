@@ -169,6 +169,14 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: downloadURL cannot be empty")
 	}
 
+	parsedDownloadURL, err := url.Parse(downloadURL)
+	if err != nil {
+		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: parse downloadURL: %w", err)
+	}
+	if parsedDownloadURL.Scheme != "http" && parsedDownloadURL.Scheme != "https" {
+		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: invalid URL scheme %q (only http and https are permitted)", parsedDownloadURL.Scheme)
+	}
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: build request: %w", err)
@@ -179,8 +187,7 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 	}
 
 	// Only attach Authorization header if download URL matches the configured API host
-	parsedDownloadURL, parseDownloadErr := url.Parse(downloadURL)
-	if parseDownloadErr == nil && parsedDownloadURL.Host != "" {
+	if parsedDownloadURL.Host != "" {
 		parsedBaseURL, parseBaseErr := url.Parse(c.apiBaseURL)
 		if parseBaseErr == nil && parsedBaseURL.Host != "" {
 			if strings.EqualFold(parsedDownloadURL.Host, parsedBaseURL.Host) {

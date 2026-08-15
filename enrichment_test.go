@@ -39,6 +39,7 @@ func newTestServerAndClient(t *testing.T, expectedMethod, expectedPath string, s
 			_ = json.NewEncoder(w).Encode(responsePayload)
 		}
 	}))
+	t.Cleanup(ts.Close)
 
 	client, err := NewClient(&ClientConfig{
 		APIKey:  "test-api-key",
@@ -431,5 +432,30 @@ func TestVersionConstants(t *testing.T) {
 	}
 	if DefaultUserAgent != "xyo-sdk-go/"+Version {
 		t.Errorf("expected DefaultUserAgent 'xyo-sdk-go/%s', got %q", Version, DefaultUserAgent)
+	}
+}
+
+func TestDownloadEnrichmentCollection_InvalidScheme(t *testing.T) {
+	client, err := NewClient(&ClientConfig{
+		APIKey: "test-api-key",
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	invalidURLs := []string{
+		"file:///etc/passwd",
+		"ftp://example.com/file.tar.gz",
+		"gopher://example.com",
+		"javascript:alert(1)",
+	}
+
+	for _, u := range invalidURLs {
+		t.Run(u, func(t *testing.T) {
+			_, err := client.DownloadEnrichmentCollection(context.Background(), u)
+			if err == nil {
+				t.Fatalf("expected error for invalid scheme %q, got nil", u)
+			}
+		})
 	}
 }
