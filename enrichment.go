@@ -80,16 +80,32 @@ type Enrichment interface {
 	DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error)
 }
 
+// Validate checks that the enrichment request fields meet business and ISO constraints.
+func (r *EnrichmentRequest) Validate() error {
+	if r == nil {
+		return fmt.Errorf("request is nil")
+	}
+	content := strings.TrimSpace(r.Content)
+	if content == "" {
+		return fmt.Errorf("Content cannot be empty")
+	}
+	if len(content) > 128 {
+		return fmt.Errorf("Content exceeds maximum allowed length of 128 characters")
+	}
+	countryCode := strings.TrimSpace(r.CountryCode)
+	if countryCode == "" {
+		return fmt.Errorf("CountryCode cannot be empty")
+	}
+	if len(countryCode) != 2 {
+		return fmt.Errorf("CountryCode must be exactly 2 characters (ISO 3166-1 alpha-2)")
+	}
+	return nil
+}
+
 // EnrichTransaction enriches a single payment transaction.
 func (c *client) EnrichTransaction(ctx context.Context, req *EnrichmentRequest) (*EnrichmentResponse, error) {
-	if req == nil {
-		return nil, fmt.Errorf("xyo: EnrichTransaction: request is nil")
-	}
-	if strings.TrimSpace(req.Content) == "" {
-		return nil, fmt.Errorf("xyo: EnrichTransaction: Content cannot be empty")
-	}
-	if strings.TrimSpace(req.CountryCode) == "" {
-		return nil, fmt.Errorf("xyo: EnrichTransaction: CountryCode cannot be empty")
+	if err := req.Validate(); err != nil {
+		return nil, fmt.Errorf("xyo: EnrichTransaction: %w", err)
 	}
 
 	genReq := openapi.NewEnrichmentRequest(req.Content, req.CountryCode)
@@ -119,14 +135,8 @@ func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentReque
 
 	items := make([]openapi.EnrichTransactionsRequestInner, 0, len(reqs))
 	for i, req := range reqs {
-		if req == nil {
-			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d is nil", i)
-		}
-		if strings.TrimSpace(req.Content) == "" {
-			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d has empty Content", i)
-		}
-		if strings.TrimSpace(req.CountryCode) == "" {
-			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d has empty CountryCode", i)
+		if err := req.Validate(); err != nil {
+			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d invalid: %w", i, err)
 		}
 		items = append(items, openapi.EnrichTransactionsRequestInner{
 			Content:     &req.Content,
@@ -157,6 +167,31 @@ const (
 	// DefaultMaxArchiveBytes is the maximum total uncompressed bytes allowed across the tarball stream (100 MiB).
 	DefaultMaxArchiveBytes = 100 * 1024 * 1024
 )
+
+type maxBytesReader struct {
+	r     io.Reader
+	limit int64
+	read  int64
+	desc  string
+}
+
+func (m *maxBytesReader) Read(p []byte) (int, error) {
+	n, err := m.r.Read(p)
+	m.read += int64(n)
+	if m.read > m.limit {
+		return n, fmt.Errorf("xyo: %s exceeded maximum allowed size of %d bytes", m.desc, m.limit)
+	}
+	return n, err
+}
+
+func sanitizeTarEntryName(name string) string {
+	return strings.Map(func(r rune) rune {
+		if r < 32 || r == 127 || r == '\n' || r == '\r' {
+			return '_'
+		}
+		return r
+	}, name)
+}
 
 // GetEnrichmentStatus returns the processing status of a bulk enrichment job.
 func (c *client) GetEnrichmentStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error) {
@@ -206,18 +241,20 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 	if err != nil {
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: build request: %w", err)
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "application/gzip, application/x-tar, application/octet-stream;q=0.9, */*;q=0.8")
 	if userAgent := c.apiClient.GetConfig().UserAgent; userAgent != "" {
 		req.Header.Set("User-Agent", userAgent)
 	}
 
-	// Only attach Authorization header if download URL matches the configured API host
+	// Only attach Authorization header if download URL matches the configured API host (prevents token leakage)
 	if parsedDownloadURL.Host != "" {
 		parsedBaseURL, parseBaseErr := url.Parse(c.apiBaseURL)
 		if parseBaseErr == nil && parsedBaseURL.Host != "" {
 			if strings.EqualFold(parsedDownloadURL.Host, parsedBaseURL.Host) {
-				if authHeader, ok := c.apiClient.GetConfig().DefaultHeader["Authorization"]; ok {
-					req.Header.Set("Authorization", authHeader)
+				if c.keySupplier != nil {
+					if key := c.keySupplier(); key != "" {
+						req.Header.Set("Authorization", "Bearer "+key)
+					}
 				}
 			}
 		}
@@ -244,15 +281,26 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: status %d", resp.StatusCode)
 	}
 
-	// Limit total compressed stream and decompressed stream to prevent decompression bombs
-	limitedBody := io.LimitReader(resp.Body, DefaultMaxArchiveBytes)
+	// Validate Content-Type header to diagnose intermediate proxy/WAF challenge pages
+	ct := resp.Header.Get("Content-Type")
+	if ct != "" {
+		ctLower := strings.ToLower(ct)
+		if !strings.Contains(ctLower, "gzip") && !strings.Contains(ctLower, "tar") && !strings.Contains(ctLower, "octet-stream") && !strings.Contains(ctLower, "binary") {
+			previewBuf := make([]byte, 512)
+			n, _ := resp.Body.Read(previewBuf)
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: unexpected Content-Type %q (body preview: %s)", ct, string(previewBuf[:n]))
+		}
+	}
+
+	// Limit total compressed stream and decompressed stream to prevent decompression bombs (actively errors on overflow)
+	limitedBody := &maxBytesReader{r: resp.Body, limit: DefaultMaxArchiveBytes, desc: "compressed archive stream"}
 	gzReader, err := gzip.NewReader(limitedBody)
 	if err != nil {
 		return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: gzip stream: %w", err)
 	}
 	defer func() { _ = gzReader.Close() }()
 
-	limitedTarStream := io.LimitReader(gzReader, DefaultMaxArchiveBytes)
+	limitedTarStream := &maxBytesReader{r: gzReader, limit: DefaultMaxArchiveBytes, desc: "decompressed archive stream"}
 	tarReader := tar.NewReader(limitedTarStream)
 	var results []*EnrichmentResponse
 
@@ -271,6 +319,10 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		if header.Typeflag != tar.TypeReg {
 			continue
 		}
+		// Zip-Slip and path traversal mitigation
+		if strings.Contains(header.Name, "..") || strings.HasPrefix(header.Name, "/") || strings.HasPrefix(header.Name, "\\") {
+			continue
+		}
 		if header.Size > DefaultMaxEntryBytes {
 			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: entry %q exceeds maximum allowed size (%d bytes > %d bytes)", header.Name, header.Size, DefaultMaxEntryBytes)
 		}
@@ -278,7 +330,7 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 		var result EnrichmentResponse
 		entryReader := io.LimitReader(tarReader, DefaultMaxEntryBytes)
 		if err := json.NewDecoder(entryReader).Decode(&result); err != nil {
-			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: decode json from %s: %w", header.Name, err)
+			return nil, fmt.Errorf("xyo: DownloadEnrichmentCollection: decode json from %s: %w", sanitizeTarEntryName(header.Name), err)
 		}
 		results = append(results, &result)
 	}
