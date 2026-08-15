@@ -88,6 +88,9 @@ func (c *client) EnrichTransaction(ctx context.Context, req *EnrichmentRequest) 
 
 	genReq := openapi.NewEnrichmentRequest(req.Content, req.CountryCode)
 	resp, httpResp, err := c.apiClient.EnrichmentAPI.EnrichTransaction(ctx).EnrichmentRequest(*genReq).Execute()
+	if httpResp != nil && httpResp.Body != nil {
+		defer func() { _ = httpResp.Body.Close() }()
+	}
 	if err != nil {
 		return nil, parseOpenAPIError(err, "EnrichTransaction", httpResp)
 	}
@@ -117,6 +120,9 @@ func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentReque
 
 	resp, httpResp, err := c.apiClient.EnrichmentAPI.EnrichTransactions(ctx).
 		EnrichTransactionsRequestInner(items).Execute()
+	if httpResp != nil && httpResp.Body != nil {
+		defer func() { _ = httpResp.Body.Close() }()
+	}
 	if err != nil {
 		return nil, parseOpenAPIError(err, "EnrichTransactions", httpResp)
 	}
@@ -143,6 +149,9 @@ func (c *client) GetEnrichmentStatus(ctx context.Context, id string) (Enrichment
 	}
 
 	resp, httpResp, err := c.apiClient.EnrichmentAPI.GetEnrichmentStatus(ctx, id).Execute()
+	if httpResp != nil && httpResp.Body != nil {
+		defer func() { _ = httpResp.Body.Close() }()
+	}
 	if err != nil {
 		return "", parseOpenAPIError(err, "GetEnrichmentStatus", httpResp)
 	}
