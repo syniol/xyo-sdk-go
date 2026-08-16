@@ -3,7 +3,7 @@
 <p align="center">
     <a href="https://xyo.financial" target="_blank"><img alt="Go Gopher Mascot" width="45%" src="https://github.com/xyo-financial/sdk-go/blob/main/docs/mascot.png?raw=true" /></a>
     <br/>
-    <b>Enterprise Financial Transaction Enrichment SDK for Go</b>
+    <b>Financial Transaction Enrichment SDK for Go</b>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 
 ---
 
-## 📖 Executive Summary
+## 📖 Summary
 
 The **XYO Financial SDK for Go** provides a high-performance, strongly typed client library for integrating XYO's AI-driven transaction enrichment engine into cloud-native Go microservices and enterprise financial backends. 
 
@@ -27,7 +27,7 @@ Maintained by [Syniol Limited](https://syniol.com) as the official Go distributi
 
 ---
 
-## 🏗 Enterprise Architectural Principles
+## 🏗 Architectural Principles
 
 1. **Context-Native & Cancelable**: Every client method accepts `context.Context` as its first parameter, supporting fine-grained request timeouts, deadline propagation, and instant cancellation across distributed call trees.
 2. **Thread-Safe & Reusable**: The `xyo.Client` is fully stateless and safe for concurrent use across goroutines. Recommended for allocation as a long-lived application singleton.
@@ -388,7 +388,7 @@ For backward compatibility with earlier integrations, the following alias method
 
 ---
 
-## 📞 Enterprise Support
+## 📞 Support
 
 For enterprise SLAs, custom rate tiers, or dedicated technical support:
 - **Dashboard**: [https://xyo.financial/dashboard](https://xyo.financial/dashboard)
