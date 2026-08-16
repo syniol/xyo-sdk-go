@@ -1,18 +1,23 @@
-# XYO.Financial SDK for Go
+<p align="center">
+  <a href="https://xyo.financial" target="_blank" rel="noopener noreferrer">
+    <img alt="XYO Financial Go Mascot" width="380" src="docs/mascot.png" />
+  </a>
+</p>
+
+<h1 align="center">XYO Financial SDK for Go</h1>
 
 <p align="center">
-    <a href="https://xyo.financial" target="_blank"><img alt="Go Gopher Mascot" width="45%" src="https://github.com/xyo-financial/sdk-go/blob/main/docs/mascot.png?raw=true" /></a>
-    <br/>
-    <b>Financial Transaction Enrichment SDK for Go</b>
+  <a href="https://github.com/xyo-financial/sdk-go/actions/workflows/makefile.yml"><img src="https://github.com/xyo-financial/sdk-go/actions/workflows/makefile.yml/badge.svg?branch=main" alt="CI Build Pipeline" /></a>
+  <a href="https://github.com/xyo-financial/sdk-go/actions/workflows/release.yml"><img src="https://github.com/xyo-financial/sdk-go/actions/workflows/release.yml/badge.svg" alt="Release Pipeline" /></a>
+  <a href="https://pkg.go.dev/github.com/xyo-financial/sdk-go/v2"><img src="https://pkg.go.dev/badge/github.com/xyo-financial/sdk-go/v2" alt="Go Reference" /></a>
+  <img src="https://img.shields.io/badge/Go-%3E%3D1.22-00ADD8?logo=go&logoColor=white" alt="Go Compatibility" />
+  <img src="https://img.shields.io/badge/RFC_7807-Compliant-brightgreen" alt="RFC 7807 Compliant" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License" /></a>
 </p>
 
 <p align="center">
-    <a href="https://github.com/xyo-financial/sdk-go/actions/workflows/makefile.yml"><img src="https://github.com/xyo-financial/sdk-go/actions/workflows/makefile.yml/badge.svg?branch=main" alt="CI Build Pipeline" /></a>
-    <a href="https://github.com/xyo-financial/sdk-go/actions/workflows/release.yml"><img src="https://github.com/xyo-financial/sdk-go/actions/workflows/release.yml/badge.svg" alt="Release Pipeline" /></a>
-    <a href="https://pkg.go.dev/github.com/xyo-financial/sdk-go/v2"><img src="https://pkg.go.dev/badge/github.com/xyo-financial/sdk-go/v2" alt="Go Reference" /></a>
-    <img src="https://img.shields.io/badge/Go-%3E%3D1.22-00ADD8?logo=go&logoColor=white" alt="Go Compatibility" />
-    <img src="https://img.shields.io/badge/RFC_7807-Compliant-brightgreen" alt="RFC 7807 Compliant" />
-    <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License" />
+  <strong>The official Go SDK for <a href="https://xyo.financial">XYO Financial</a>.</strong><br>
+  Seamlessly enrich raw financial transactions into clean merchant profiles, intelligent business categorizations, high-res logos, and geolocated address metadata using AI-powered enrichment pipelines.
 </p>
 
 ---
