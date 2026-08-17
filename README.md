@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://xyo.financial" target="_blank" rel="noopener noreferrer">
-    <img alt="XYO Financial Go Mascot" width="380" src="docs/mascot.png" />
+    <img alt="XYO Financial Go Mascot" width="380" src="https://raw.githubusercontent.com/xyo-financial/sdk-go/main/docs/mascot.png" />
   </a>
 </p>
 
