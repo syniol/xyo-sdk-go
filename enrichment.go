@@ -44,6 +44,24 @@ const (
 	traceparentContextKey   contextKey = "xyo-traceparent"
 )
 
+type sanitizeCtx struct {
+	context.Context
+}
+
+func (s sanitizeCtx) Value(key any) any {
+	if key == openapi.ContextAccessToken {
+		return nil
+	}
+	return s.Context.Value(key)
+}
+
+func sanitizeContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return sanitizeCtx{Context: ctx}
+}
+
 // WithCorrelationID returns a context containing the specified correlation ID for distributed tracing.
 func WithCorrelationID(ctx context.Context, correlationID string) context.Context {
 	return context.WithValue(ctx, correlationIDContextKey, correlationID)
@@ -195,7 +213,7 @@ func (c *client) EnrichTransactionWithOptions(ctx context.Context, req *Enrichme
 	}
 
 	genReq := openapi.NewEnrichmentRequest(req.Content, req.CountryCode)
-	apiReq := c.apiClient.EnrichmentAPI.EnrichTransaction(ctx).EnrichmentRequest(*genReq)
+	apiReq := c.apiClient.EnrichmentAPI.EnrichTransaction(sanitizeContext(ctx)).EnrichmentRequest(*genReq)
 
 	if cid != "" {
 		apiReq = apiReq.XCorrelationID(cid)
@@ -263,7 +281,7 @@ func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*Enri
 		})
 	}
 
-	apiReq := c.apiClient.EnrichmentAPI.EnrichTransactions(ctx).
+	apiReq := c.apiClient.EnrichmentAPI.EnrichTransactions(sanitizeContext(ctx)).
 		EnrichTransactionsRequestInner(items)
 
 	if opts != nil && opts.APIUser != "" {
@@ -352,7 +370,7 @@ func (c *client) GetEnrichmentStatusWithOptions(ctx context.Context, id string, 
 		return "", fmt.Errorf("xyo: GetEnrichmentStatus: %w", err)
 	}
 
-	apiReq := c.apiClient.EnrichmentAPI.GetEnrichmentStatus(ctx, id)
+	apiReq := c.apiClient.EnrichmentAPI.GetEnrichmentStatus(sanitizeContext(ctx), id)
 	if opts != nil && opts.APIUser != "" {
 		apiReq = apiReq.XApiUser(opts.APIUser)
 	}

@@ -246,41 +246,11 @@ func parameterToJson(obj interface{}) (string, error) {
 // callAPI do the request.
 func (c *APIClient) callAPI(request *http.Request) (*http.Response, error) {
 	if c.cfg.Debug {
-		// Read the body up-front so we can give both the clone (for dump) and
-		// the real request fresh readers.  Clone is shallow — Body is shared —
-		// so DumpRequestOut would exhaust the original without this.
-		var bodyBytes []byte
-		if request.Body != nil {
-			var readErr error
-			bodyBytes, readErr = io.ReadAll(request.Body)
-			_ = request.Body.Close()
-			if readErr != nil {
-				return nil, readErr
-			}
-			request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		}
-		cloned := request.Clone(request.Context())
-		if len(bodyBytes) > 0 {
-			cloned.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		}
-		for k := range cloned.Header {
-			lk := strings.ToLower(k)
-			if strings.Contains(lk, "authorization") || strings.Contains(lk, "cookie") || strings.Contains(lk, "token") || strings.Contains(lk, "key") || strings.Contains(lk, "secret") {
-				cloned.Header.Set(k, "[REDACTED]")
-			}
-		}
-		dump, err := httputil.DumpRequestOut(cloned, true)
+		dump, err := httputil.DumpRequestOut(request, true)
 		if err != nil {
 			return nil, err
 		}
 		log.Printf("\n%s\n", string(dump))
-		// request.Body is already restored above; prefer GetBody when available.
-		if request.GetBody != nil {
-			newBody, err := request.GetBody()
-			if err == nil {
-				request.Body = newBody
-			}
-		}
 	}
 
 	resp, err := c.cfg.HTTPClient.Do(request)

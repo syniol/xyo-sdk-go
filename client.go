@@ -1,10 +1,14 @@
 package xyo
 
 import (
+	"bytes"
 	"crypto/tls"
 	"errors"
+	"io"
+	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
@@ -90,6 +94,7 @@ type authRoundTripper struct {
 	base        http.RoundTripper
 	apiBaseURL  string
 	keySupplier func() string
+	cfg         *openapi.Configuration
 }
 
 func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -110,11 +115,51 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			}
 		}
 	}
+
+	if a.cfg != nil && a.cfg.Debug {
+		var bodyBytes []byte
+		if clone.Body != nil {
+			var readErr error
+			bodyBytes, readErr = io.ReadAll(clone.Body)
+			_ = clone.Body.Close()
+			if readErr != nil {
+				return nil, readErr
+			}
+			clone.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		}
+		debugReq := clone.Clone(clone.Context())
+		if len(bodyBytes) > 0 {
+			debugReq.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		}
+		for k := range debugReq.Header {
+			lk := strings.ToLower(k)
+			if strings.Contains(lk, "authorization") || strings.Contains(lk, "cookie") || strings.Contains(lk, "token") || strings.Contains(lk, "key") || strings.Contains(lk, "secret") {
+				debugReq.Header.Set(k, "[REDACTED]")
+			}
+		}
+		dump, err := httputil.DumpRequestOut(debugReq, true)
+		if err == nil {
+			log.Printf("\n%s\n", string(dump))
+		}
+	}
+
 	base := a.base
 	if base == nil {
 		base = http.DefaultTransport
 	}
-	return base.RoundTrip(clone)
+	resp, err := base.RoundTrip(clone)
+	if err != nil {
+		return nil, err
+	}
+
+	if a.cfg != nil && a.cfg.Debug && resp != nil {
+		dump, err := httputil.DumpResponse(resp, true)
+		if err == nil {
+			log.Printf("\n%s\n", string(dump))
+		}
+	}
+
+	return resp, nil
 }
 
 // Close gracefully closes any idle persistent HTTP connections.
@@ -187,6 +232,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 			URL: baseURL,
 		},
 	}
+	wrappedTransport.cfg = cfg
 	cfg.HTTPClient = httpCl
 
 	apiClient := openapi.NewAPIClient(cfg)
