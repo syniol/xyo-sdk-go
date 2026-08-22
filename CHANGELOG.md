@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-08-23
+
 ### Added
 - Dynamic API key rotation via `APIKeySupplier func() string` in `ClientConfig` for zero-downtime key rotation.
 - Multi-tenant routing support with `x-api-user` header via `BulkEnrichmentOptions` in `EnrichTransactionsWithOptions` and `GetEnrichmentStatusWithOptions`.
@@ -122,7 +124,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker-based CI pipeline with `golangci-lint` and `go test`.
 - Example application in `example/` directory.
 
-[Unreleased]: https://github.com/xyo-financial/sdk-go/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/xyo-financial/sdk-go/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/xyo-financial/sdk-go/compare/v2.0.2...v2.1.0
 [2.0.2]: https://github.com/xyo-financial/sdk-go/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/xyo-financial/sdk-go/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/xyo-financial/sdk-go/compare/v1.2.4...v2.0.0
