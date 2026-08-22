@@ -1030,3 +1030,79 @@ func TestUntypedStringContextKeysIgnored(t *testing.T) {
 		t.Errorf("expected empty traceparent from untyped string context key, got %q", tp)
 	}
 }
+
+func TestMaxBatchSizeConstant(t *testing.T) {
+	if MaxBatchSize != 50000 {
+		t.Errorf("expected MaxBatchSize to be 50000, got %d", MaxBatchSize)
+	}
+}
+
+func TestExtractHeaderValue_WhitespaceTrimming(t *testing.T) {
+	ctx := WithCorrelationID(context.Background(), "   cid-trimmed-123   ")
+	cid, err := extractCorrelationID(ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cid != "cid-trimmed-123" {
+		t.Errorf("expected trimmed correlation ID 'cid-trimmed-123', got %q", cid)
+	}
+}
+
+func TestDebugLogs_BodySuppressionAndSingleDump(t *testing.T) {
+	var buf bytes.Buffer
+	log.SetOutput(&buf)
+	defer log.SetOutput(os.Stderr)
+
+	sensitiveBodyContent := "SUPER_SECRET_PII_CARDHOLDER_DATA_12345"
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"merchant":    "TestMerchant",
+			"description": sensitiveBodyContent,
+			"categories":  []string{"Test"},
+			"logo":        "",
+			"location":    "",
+			"address":     "",
+		})
+	}))
+	defer ts.Close()
+
+	c, err := NewClient(&ClientConfig{
+		APIKey:  "test-api-key",
+		BaseURL: ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	cli := c.(*client)
+	cli.apiClient.GetConfig().Debug = true
+
+	_, err = c.EnrichTransaction(context.Background(), &EnrichmentRequest{
+		Content:     sensitiveBodyContent,
+		CountryCode: "US",
+	})
+	if err != nil {
+		t.Fatalf("EnrichTransaction failed: %v", err)
+	}
+
+	logOutput := buf.String()
+
+	// Ensure PII body content is NOT dumped
+	if strings.Contains(logOutput, sensitiveBodyContent) {
+		t.Errorf("Debug log output leaked plaintext PII body content! Output: %s", logOutput)
+	}
+
+	// Count occurrences of HTTP Dump headers to ensure no duplicate wire dumps
+	reqDumpCount := strings.Count(logOutput, "POST /v1/ai/finance/enrichment/transaction")
+	if reqDumpCount != 1 {
+		t.Errorf("Expected exactly 1 request wire dump, got %d. Output:\n%s", reqDumpCount, logOutput)
+	}
+
+	respDumpCount := strings.Count(logOutput, "HTTP/1.1 200 OK")
+	if respDumpCount != 1 {
+		t.Errorf("Expected exactly 1 response wire dump, got %d. Output:\n%s", respDumpCount, logOutput)
+	}
+}

@@ -1,10 +1,8 @@
 package xyo
 
 import (
-	"bytes"
 	"crypto/tls"
 	"errors"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -117,27 +115,14 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	if a.cfg != nil && a.cfg.Debug {
-		var bodyBytes []byte
-		if clone.Body != nil {
-			var readErr error
-			bodyBytes, readErr = io.ReadAll(clone.Body)
-			_ = clone.Body.Close()
-			if readErr != nil {
-				return nil, readErr
-			}
-			clone.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		}
 		debugReq := clone.Clone(clone.Context())
-		if len(bodyBytes) > 0 {
-			debugReq.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-		}
 		for k := range debugReq.Header {
 			lk := strings.ToLower(k)
 			if strings.Contains(lk, "authorization") || strings.Contains(lk, "cookie") || strings.Contains(lk, "token") || strings.Contains(lk, "key") || strings.Contains(lk, "secret") {
 				debugReq.Header.Set(k, "[REDACTED]")
 			}
 		}
-		dump, err := httputil.DumpRequestOut(debugReq, true)
+		dump, err := httputil.DumpRequestOut(debugReq, false)
 		if err == nil {
 			log.Printf("\n%s\n", string(dump))
 		}
@@ -153,7 +138,7 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	if a.cfg != nil && a.cfg.Debug && resp != nil {
-		dump, err := httputil.DumpResponse(resp, true)
+		dump, err := httputil.DumpResponse(resp, false)
 		if err == nil {
 			log.Printf("\n%s\n", string(dump))
 		}

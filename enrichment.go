@@ -73,7 +73,7 @@ func WithTraceparent(ctx context.Context, traceparent string) context.Context {
 }
 
 // extractHeaderValue resolves a header value from opts (direct) or ctx (via key),
-// then rejects any value containing CRLF characters to prevent header injection.
+// strips leading/trailing whitespace, and then rejects any value containing CRLF characters to prevent header injection.
 func extractHeaderValue(ctx context.Context, direct string, ctxKey any, errLabel string) (string, error) {
 	val := direct
 	if val == "" && ctx != nil {
@@ -81,6 +81,7 @@ func extractHeaderValue(ctx context.Context, direct string, ctxKey any, errLabel
 			val = v
 		}
 	}
+	val = strings.TrimSpace(val)
 	if strings.ContainsAny(val, "\r\n") {
 		return "", fmt.Errorf("%s contains invalid CRLF characters", errLabel)
 	}
@@ -250,7 +251,7 @@ func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*Enri
 	if len(reqs) == 0 {
 		return nil, fmt.Errorf("xyo: EnrichTransactions: reqs slice cannot be empty (must contain between 1 and 50,000 items)")
 	}
-	if len(reqs) > 50000 {
+	if len(reqs) > MaxBatchSize {
 		return nil, fmt.Errorf("xyo: EnrichTransactions: reqs slice exceeds maximum allowed length of 50,000 items (got %d)", len(reqs))
 	}
 
@@ -309,6 +310,8 @@ func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*Enri
 }
 
 const (
+	// MaxBatchSize is the maximum allowed number of items in a bulk enrichment request.
+	MaxBatchSize = 50000
 	// DefaultMaxTarEntries is the maximum number of entries processed from a bulk enrichment tarball.
 	DefaultMaxTarEntries = 50000
 	// DefaultMaxEntryBytes is the maximum allowed size (in bytes) for a single JSON file within the tarball (10 MiB).
