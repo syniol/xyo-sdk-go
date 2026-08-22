@@ -24,10 +24,72 @@ type EnrichmentRequest struct {
 	CountryCode string `json:"countryCode"`
 }
 
-// BulkEnrichmentOptions specifies optional multi-tenant or departmental tracking parameters.
-type BulkEnrichmentOptions struct {
+// RequestOptions specifies optional multi-tenant or distributed tracing headers.
+type RequestOptions struct {
 	// APIUser is the tenant or user ID passed in the x-api-user HTTP header (e.g. for multi-tenant metering).
 	APIUser string
+	// CorrelationID is the unique caller correlation identifier passed in the X-Correlation-ID HTTP header.
+	CorrelationID string
+	// Traceparent is the standard W3C TraceContext header passed in the traceparent HTTP header.
+	Traceparent string
+}
+
+// BulkEnrichmentOptions is an alias for RequestOptions retained for backward compatibility.
+type BulkEnrichmentOptions = RequestOptions
+
+type contextKey string
+
+const (
+	correlationIDContextKey contextKey = "xyo-correlation-id"
+	traceparentContextKey   contextKey = "xyo-traceparent"
+)
+
+// WithCorrelationID returns a context containing the specified correlation ID for distributed tracing.
+func WithCorrelationID(ctx context.Context, correlationID string) context.Context {
+	return context.WithValue(ctx, correlationIDContextKey, correlationID)
+}
+
+// WithTraceparent returns a context containing the specified W3C traceparent header for distributed tracing.
+func WithTraceparent(ctx context.Context, traceparent string) context.Context {
+	return context.WithValue(ctx, traceparentContextKey, traceparent)
+}
+
+func extractCorrelationID(ctx context.Context, opts *RequestOptions) (string, error) {
+	var cid string
+	if opts != nil && opts.CorrelationID != "" {
+		cid = opts.CorrelationID
+	} else if ctx != nil {
+		if v, ok := ctx.Value(correlationIDContextKey).(string); ok && v != "" {
+			cid = v
+		} else if v, ok := ctx.Value("X-Correlation-ID").(string); ok && v != "" {
+			cid = v
+		} else if v, ok := ctx.Value("x-correlation-id").(string); ok && v != "" {
+			cid = v
+		} else if v, ok := ctx.Value("correlation_id").(string); ok && v != "" {
+			cid = v
+		}
+	}
+	if strings.ContainsAny(cid, "\r\n") {
+		return "", fmt.Errorf("correlationID contains invalid CRLF characters")
+	}
+	return cid, nil
+}
+
+func extractTraceparent(ctx context.Context, opts *RequestOptions) (string, error) {
+	var tp string
+	if opts != nil && opts.Traceparent != "" {
+		tp = opts.Traceparent
+	} else if ctx != nil {
+		if v, ok := ctx.Value(traceparentContextKey).(string); ok && v != "" {
+			tp = v
+		} else if v, ok := ctx.Value("traceparent").(string); ok && v != "" {
+			tp = v
+		}
+	}
+	if strings.ContainsAny(tp, "\r\n") {
+		return "", fmt.Errorf("traceparent contains invalid CRLF characters")
+	}
+	return tp, nil
 }
 
 // EnrichmentResponse is the result of a single payment transaction enrichment.
@@ -68,18 +130,21 @@ type Enrichment interface {
 	// EnrichTransaction enriches a single payment transaction synchronously.
 	EnrichTransaction(ctx context.Context, req *EnrichmentRequest) (*EnrichmentResponse, error)
 
+	// EnrichTransactionWithOptions enriches a single payment transaction synchronously with optional request options.
+	EnrichTransactionWithOptions(ctx context.Context, req *EnrichmentRequest, opts *RequestOptions) (*EnrichmentResponse, error)
+
 	// EnrichTransactions submits a bulk enrichment request asynchronously
 	// and returns a job ID and download link.
 	EnrichTransactions(ctx context.Context, reqs []*EnrichmentRequest) (*EnrichTransactionCollectionResponse, error)
 
-	// EnrichTransactionsWithOptions submits a bulk enrichment request asynchronously with optional multi-tenant options.
-	EnrichTransactionsWithOptions(ctx context.Context, reqs []*EnrichmentRequest, opts *BulkEnrichmentOptions) (*EnrichTransactionCollectionResponse, error)
+	// EnrichTransactionsWithOptions submits a bulk enrichment request asynchronously with optional multi-tenant or tracing options.
+	EnrichTransactionsWithOptions(ctx context.Context, reqs []*EnrichmentRequest, opts *RequestOptions) (*EnrichTransactionCollectionResponse, error)
 
 	// GetEnrichmentStatus returns the processing status of a bulk enrichment job.
 	GetEnrichmentStatus(ctx context.Context, id string) (EnrichmentCollectionStatus, error)
 
-	// GetEnrichmentStatusWithOptions returns the processing status with optional multi-tenant options.
-	GetEnrichmentStatusWithOptions(ctx context.Context, id string, opts *BulkEnrichmentOptions) (EnrichmentCollectionStatus, error)
+	// GetEnrichmentStatusWithOptions returns the processing status with optional multi-tenant or tracing options.
+	GetEnrichmentStatusWithOptions(ctx context.Context, id string, opts *RequestOptions) (EnrichmentCollectionStatus, error)
 
 	// --- Backward-compatible aliases (retained for existing integrations) ---
 
@@ -117,12 +182,36 @@ func (r *EnrichmentRequest) Validate() error {
 
 // EnrichTransaction enriches a single payment transaction.
 func (c *client) EnrichTransaction(ctx context.Context, req *EnrichmentRequest) (*EnrichmentResponse, error) {
+	return c.EnrichTransactionWithOptions(ctx, req, nil)
+}
+
+// EnrichTransactionWithOptions enriches a single payment transaction synchronously with optional request options.
+func (c *client) EnrichTransactionWithOptions(ctx context.Context, req *EnrichmentRequest, opts *RequestOptions) (*EnrichmentResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("xyo: EnrichTransaction: %w", err)
 	}
 
+	cid, err := extractCorrelationID(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("xyo: EnrichTransaction: %w", err)
+	}
+
+	tp, err := extractTraceparent(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("xyo: EnrichTransaction: %w", err)
+	}
+
 	genReq := openapi.NewEnrichmentRequest(req.Content, req.CountryCode)
-	resp, httpResp, err := c.apiClient.EnrichmentAPI.EnrichTransaction(ctx).EnrichmentRequest(*genReq).Execute()
+	apiReq := c.apiClient.EnrichmentAPI.EnrichTransaction(ctx).EnrichmentRequest(*genReq)
+
+	if cid != "" {
+		apiReq = apiReq.XCorrelationID(cid)
+	}
+	if tp != "" {
+		apiReq = apiReq.Traceparent(tp)
+	}
+
+	resp, httpResp, err := apiReq.Execute()
 	if httpResp != nil && httpResp.Body != nil {
 		defer func() { _ = httpResp.Body.Close() }()
 	}
@@ -145,16 +234,29 @@ func (c *client) EnrichTransactions(ctx context.Context, reqs []*EnrichmentReque
 	return c.EnrichTransactionsWithOptions(ctx, reqs, nil)
 }
 
-// EnrichTransactionsWithOptions submits a bulk enrichment request asynchronously with optional multi-tenant options.
-func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*EnrichmentRequest, opts *BulkEnrichmentOptions) (*EnrichTransactionCollectionResponse, error) {
+// EnrichTransactionsWithOptions submits a bulk enrichment request asynchronously with optional multi-tenant or tracing options.
+func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*EnrichmentRequest, opts *RequestOptions) (*EnrichTransactionCollectionResponse, error) {
 	if len(reqs) == 0 {
-		return nil, fmt.Errorf("xyo: EnrichTransactions: reqs slice cannot be empty")
+		return nil, fmt.Errorf("xyo: EnrichTransactions: reqs slice cannot be empty (must contain between 1 and 50,000 items)")
+	}
+	if len(reqs) > 50000 {
+		return nil, fmt.Errorf("xyo: EnrichTransactions: reqs slice exceeds maximum allowed length of 50,000 items (got %d)", len(reqs))
 	}
 
 	if opts != nil && opts.APIUser != "" {
 		if strings.ContainsAny(opts.APIUser, "\r\n") {
 			return nil, fmt.Errorf("xyo: EnrichTransactions: apiUser contains invalid CRLF characters")
 		}
+	}
+
+	cid, err := extractCorrelationID(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("xyo: EnrichTransactions: %w", err)
+	}
+
+	tp, err := extractTraceparent(ctx, opts)
+	if err != nil {
+		return nil, fmt.Errorf("xyo: EnrichTransactions: %w", err)
 	}
 
 	items := make([]openapi.EnrichTransactionsRequestInner, 0, len(reqs))
@@ -173,6 +275,12 @@ func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*Enri
 
 	if opts != nil && opts.APIUser != "" {
 		apiReq = apiReq.XApiUser(opts.APIUser)
+	}
+	if cid != "" {
+		apiReq = apiReq.XCorrelationID(cid)
+	}
+	if tp != "" {
+		apiReq = apiReq.Traceparent(tp)
 	}
 
 	resp, httpResp, err := apiReq.Execute()
@@ -228,8 +336,8 @@ func (c *client) GetEnrichmentStatus(ctx context.Context, id string) (Enrichment
 	return c.GetEnrichmentStatusWithOptions(ctx, id, nil)
 }
 
-// GetEnrichmentStatusWithOptions polls the status of an asynchronous bulk enrichment job with optional multi-tenant options.
-func (c *client) GetEnrichmentStatusWithOptions(ctx context.Context, id string, opts *BulkEnrichmentOptions) (EnrichmentCollectionStatus, error) {
+// GetEnrichmentStatusWithOptions polls the status of an asynchronous bulk enrichment job with optional multi-tenant or tracing options.
+func (c *client) GetEnrichmentStatusWithOptions(ctx context.Context, id string, opts *RequestOptions) (EnrichmentCollectionStatus, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return "", fmt.Errorf("xyo: GetEnrichmentStatus: id cannot be empty")
@@ -241,9 +349,25 @@ func (c *client) GetEnrichmentStatusWithOptions(ctx context.Context, id string, 
 		}
 	}
 
+	cid, err := extractCorrelationID(ctx, opts)
+	if err != nil {
+		return "", fmt.Errorf("xyo: GetEnrichmentStatus: %w", err)
+	}
+
+	tp, err := extractTraceparent(ctx, opts)
+	if err != nil {
+		return "", fmt.Errorf("xyo: GetEnrichmentStatus: %w", err)
+	}
+
 	apiReq := c.apiClient.EnrichmentAPI.GetEnrichmentStatus(ctx, id)
 	if opts != nil && opts.APIUser != "" {
 		apiReq = apiReq.XApiUser(opts.APIUser)
+	}
+	if cid != "" {
+		apiReq = apiReq.XCorrelationID(cid)
+	}
+	if tp != "" {
+		apiReq = apiReq.Traceparent(tp)
 	}
 
 	resp, httpResp, err := apiReq.Execute()
