@@ -1010,9 +1010,9 @@ func TestUntypedStringContextKeysIgnored(t *testing.T) {
 	})
 	defer ts.Close()
 
-	// Pass untyped string context keys which should now be ignored
-	ctx := context.WithValue(context.Background(), "X-Correlation-ID", "untyped-cid")
-	ctx = context.WithValue(ctx, "traceparent", "untyped-tp")
+	type untypedKey string
+	ctx := context.WithValue(context.Background(), untypedKey("X-Correlation-ID"), "untyped-cid")
+	ctx = context.WithValue(ctx, untypedKey("traceparent"), "untyped-tp")
 
 	cid, err := extractCorrelationID(ctx, nil)
 	if err != nil {
