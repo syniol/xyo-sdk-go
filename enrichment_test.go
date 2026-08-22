@@ -956,4 +956,3 @@ func TestEnrichTransactions_BatchBoundsValidation(t *testing.T) {
 		}
 	})
 }
-

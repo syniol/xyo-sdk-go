@@ -29,7 +29,7 @@ type APIError struct {
 	// A human-readable explanation specific to this occurrence of the problem.
 	Detail string `json:"detail"`
 	// A URI reference identifying the specific occurrence of the problem.
-	Instance string `json:"instance"`
+	Instance             string `json:"instance"`
 	AdditionalProperties map[string]interface{}
 }
 
@@ -178,7 +178,7 @@ func (o *APIError) SetInstance(v string) {
 }
 
 func (o APIError) MarshalJSON() ([]byte, error) {
-	toSerialize,err := o.ToMap()
+	toSerialize, err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -217,10 +217,10 @@ func (o *APIError) UnmarshalJSON(data []byte) (err error) {
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err;
+		return err
 	}
 
-	for _, requiredProperty := range(requiredProperties) {
+	for _, requiredProperty := range requiredProperties {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -285,5 +285,3 @@ func (v *NullableAPIError) UnmarshalJSON(src []byte) error {
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-

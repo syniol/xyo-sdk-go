@@ -21,7 +21,7 @@ var _ MappedNullable = &EnrichmentCollectionStatusResponse{}
 // EnrichmentCollectionStatusResponse struct for EnrichmentCollectionStatusResponse
 type EnrichmentCollectionStatusResponse struct {
 	// Status represents the processing state of a bulk enrichment job.
-	Status string `json:"status"`
+	Status               string `json:"status"`
 	AdditionalProperties map[string]interface{}
 }
 
@@ -70,7 +70,7 @@ func (o *EnrichmentCollectionStatusResponse) SetStatus(v string) {
 }
 
 func (o EnrichmentCollectionStatusResponse) MarshalJSON() ([]byte, error) {
-	toSerialize,err := o.ToMap()
+	toSerialize, err := o.ToMap()
 	if err != nil {
 		return []byte{}, err
 	}
@@ -101,10 +101,10 @@ func (o *EnrichmentCollectionStatusResponse) UnmarshalJSON(data []byte) (err err
 	err = json.Unmarshal(data, &allProperties)
 
 	if err != nil {
-		return err;
+		return err
 	}
 
-	for _, requiredProperty := range(requiredProperties) {
+	for _, requiredProperty := range requiredProperties {
 		if _, exists := allProperties[requiredProperty]; !exists {
 			return fmt.Errorf("no value given for required property %v", requiredProperty)
 		}
@@ -165,5 +165,3 @@ func (v *NullableEnrichmentCollectionStatusResponse) UnmarshalJSON(src []byte) e
 	v.isSet = true
 	return json.Unmarshal(src, &v.value)
 }
-
-
