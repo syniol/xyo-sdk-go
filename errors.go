@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -137,7 +138,7 @@ func extractRateLimitHeaders(httpResp *http.Response, errResp *ErrorResponse) {
 		if sec, err := strconv.Atoi(val); err == nil {
 			errResp.RetryAfter = sec
 		} else if t, err := http.ParseTime(val); err == nil {
-			diff := int(time.Until(t).Seconds())
+			diff := int(math.Ceil(time.Until(t).Seconds()))
 			if diff < 0 {
 				diff = 0
 			}

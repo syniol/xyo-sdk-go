@@ -54,34 +54,35 @@ func WithTraceparent(ctx context.Context, traceparent string) context.Context {
 	return context.WithValue(ctx, traceparentContextKey, traceparent)
 }
 
-func extractCorrelationID(ctx context.Context, opts *RequestOptions) (string, error) {
-	var cid string
-	if opts != nil && opts.CorrelationID != "" {
-		cid = opts.CorrelationID
-	} else if ctx != nil {
-		if v, ok := ctx.Value(correlationIDContextKey).(string); ok && v != "" {
-			cid = v
+// extractHeaderValue resolves a header value from opts (direct) or ctx (via key),
+// then rejects any value containing CRLF characters to prevent header injection.
+func extractHeaderValue(ctx context.Context, direct string, ctxKey any, errLabel string) (string, error) {
+	val := direct
+	if val == "" && ctx != nil {
+		if v, ok := ctx.Value(ctxKey).(string); ok {
+			val = v
 		}
 	}
-	if strings.ContainsAny(cid, "\r\n") {
-		return "", fmt.Errorf("correlationID contains invalid CRLF characters")
+	if strings.ContainsAny(val, "\r\n") {
+		return "", fmt.Errorf("%s contains invalid CRLF characters", errLabel)
 	}
-	return cid, nil
+	return val, nil
+}
+
+func extractCorrelationID(ctx context.Context, opts *RequestOptions) (string, error) {
+	var direct string
+	if opts != nil {
+		direct = opts.CorrelationID
+	}
+	return extractHeaderValue(ctx, direct, correlationIDContextKey, "correlationID")
 }
 
 func extractTraceparent(ctx context.Context, opts *RequestOptions) (string, error) {
-	var tp string
-	if opts != nil && opts.Traceparent != "" {
-		tp = opts.Traceparent
-	} else if ctx != nil {
-		if v, ok := ctx.Value(traceparentContextKey).(string); ok && v != "" {
-			tp = v
-		}
+	var direct string
+	if opts != nil {
+		direct = opts.Traceparent
 	}
-	if strings.ContainsAny(tp, "\r\n") {
-		return "", fmt.Errorf("traceparent contains invalid CRLF characters")
-	}
-	return tp, nil
+	return extractHeaderValue(ctx, direct, traceparentContextKey, "traceparent")
 }
 
 // EnrichmentResponse is the result of a single payment transaction enrichment.
