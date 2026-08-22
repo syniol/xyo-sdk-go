@@ -163,8 +163,8 @@ func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*Enri
 			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d invalid: %w", i, err)
 		}
 		items = append(items, openapi.EnrichTransactionsRequestInner{
-			Content:     &req.Content,
-			CountryCode: &req.CountryCode,
+			Content:     req.Content,
+			CountryCode: req.CountryCode,
 		})
 	}
 
