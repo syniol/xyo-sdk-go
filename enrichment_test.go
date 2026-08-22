@@ -8,10 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+
+	"github.com/xyo-financial/sdk-go/v2/openapi"
 )
 
 func newTestServerAndClient(t *testing.T, expectedMethod, expectedPath string, statusCode int, responsePayload interface{}) (*httptest.Server, Client) {
@@ -955,4 +959,74 @@ func TestEnrichTransactions_BatchBoundsValidation(t *testing.T) {
 			t.Errorf("expected exceeds maximum limit error, got %v", err)
 		}
 	})
+}
+
+func TestCredentialRedactionInDebugLogs(t *testing.T) {
+	var buf bytes.Buffer
+	logWriter := &buf
+	log.SetOutput(logWriter)
+	defer log.SetOutput(os.Stderr)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"merchant":"TestMerchant","description":"TestDesc","categories":["Test"],"logo":"","location":"","address":""}`))
+	}))
+	defer ts.Close()
+
+	c, err := NewClient(&ClientConfig{
+		APIKey:  "super-secret-api-key-12345",
+		BaseURL: ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	cli := c.(*client)
+	cli.apiClient.GetConfig().Debug = true
+
+	ctx := context.WithValue(context.Background(), openapi.ContextAccessToken, "super-secret-api-key-12345")
+	_, err = c.EnrichTransaction(ctx, &EnrichmentRequest{
+		Content:     "Test Content",
+		CountryCode: "US",
+	})
+	if err != nil {
+		t.Fatalf("EnrichTransaction failed: %v", err)
+	}
+
+	logOutput := buf.String()
+	if strings.Contains(logOutput, "super-secret-api-key-12345") {
+		t.Errorf("log output leaked plain-text credentials! Output: %s", logOutput)
+	}
+	if !strings.Contains(logOutput, "[REDACTED]") {
+		t.Errorf("expected [REDACTED] in debug log output, got: %s", logOutput)
+	}
+}
+
+func TestUntypedStringContextKeysIgnored(t *testing.T) {
+	ts, _ := newTestServerAndClient(t, http.MethodPost, "/v1/ai/finance/enrichment/transaction", http.StatusOK, map[string]interface{}{
+		"merchant":    "Test",
+		"description": "Test",
+	})
+	defer ts.Close()
+
+	// Pass untyped string context keys which should now be ignored
+	ctx := context.WithValue(context.Background(), "X-Correlation-ID", "untyped-cid")
+	ctx = context.WithValue(ctx, "traceparent", "untyped-tp")
+
+	cid, err := extractCorrelationID(ctx, nil)
+	if err != nil {
+		t.Fatalf("extractCorrelationID error: %v", err)
+	}
+	if cid != "" {
+		t.Errorf("expected empty correlation ID from untyped string context key, got %q", cid)
+	}
+
+	tp, err := extractTraceparent(ctx, nil)
+	if err != nil {
+		t.Fatalf("extractTraceparent error: %v", err)
+	}
+	if tp != "" {
+		t.Errorf("expected empty traceparent from untyped string context key, got %q", tp)
+	}
 }

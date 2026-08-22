@@ -61,12 +61,6 @@ func extractCorrelationID(ctx context.Context, opts *RequestOptions) (string, er
 	} else if ctx != nil {
 		if v, ok := ctx.Value(correlationIDContextKey).(string); ok && v != "" {
 			cid = v
-		} else if v, ok := ctx.Value("X-Correlation-ID").(string); ok && v != "" {
-			cid = v
-		} else if v, ok := ctx.Value("x-correlation-id").(string); ok && v != "" {
-			cid = v
-		} else if v, ok := ctx.Value("correlation_id").(string); ok && v != "" {
-			cid = v
 		}
 	}
 	if strings.ContainsAny(cid, "\r\n") {
@@ -81,8 +75,6 @@ func extractTraceparent(ctx context.Context, opts *RequestOptions) (string, erro
 		tp = opts.Traceparent
 	} else if ctx != nil {
 		if v, ok := ctx.Value(traceparentContextKey).(string); ok && v != "" {
-			tp = v
-		} else if v, ok := ctx.Value("traceparent").(string); ok && v != "" {
 			tp = v
 		}
 	}

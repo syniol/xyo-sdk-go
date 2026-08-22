@@ -246,11 +246,26 @@ func parameterToJson(obj interface{}) (string, error) {
 // callAPI do the request.
 func (c *APIClient) callAPI(request *http.Request) (*http.Response, error) {
 	if c.cfg.Debug {
-		dump, err := httputil.DumpRequestOut(request, true)
+		cloned := request.Clone(request.Context())
+		for k := range cloned.Header {
+			lk := strings.ToLower(k)
+			if strings.Contains(lk, "authorization") || strings.Contains(lk, "cookie") || strings.Contains(lk, "token") || strings.Contains(lk, "key") || strings.Contains(lk, "secret") {
+				cloned.Header.Set(k, "[REDACTED]")
+			}
+		}
+		dump, err := httputil.DumpRequestOut(cloned, true)
 		if err != nil {
 			return nil, err
 		}
 		log.Printf("\n%s\n", string(dump))
+		if request.GetBody != nil {
+			newBody, err := request.GetBody()
+			if err == nil {
+				request.Body = newBody
+			}
+		} else if cloned.Body != nil {
+			request.Body = cloned.Body
+		}
 	}
 
 	resp, err := c.cfg.HTTPClient.Do(request)
