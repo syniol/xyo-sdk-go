@@ -3,6 +3,7 @@ package xyo
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -86,6 +87,7 @@ type client struct {
 	trustedDownloadHosts []string
 	apiClient            *openapi.APIClient
 	httpCl               *http.Client
+	transport            http.RoundTripper
 }
 
 type authRoundTripper struct {
@@ -149,12 +151,18 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 
 // Close gracefully closes any idle persistent HTTP connections.
 func (c *client) Close() error {
+	type closeIdler interface {
+		CloseIdleConnections()
+	}
+	if ci, ok := c.transport.(closeIdler); ok {
+		ci.CloseIdleConnections()
+	}
 	if c.httpCl != nil {
-		if t, ok := c.httpCl.Transport.(*http.Transport); ok {
-			t.CloseIdleConnections()
+		if ci, ok := c.httpCl.Transport.(closeIdler); ok {
+			ci.CloseIdleConnections()
 		} else if at, ok := c.httpCl.Transport.(*authRoundTripper); ok {
-			if t, ok := at.base.(*http.Transport); ok {
-				t.CloseIdleConnections()
+			if ci, ok := at.base.(closeIdler); ok {
+				ci.CloseIdleConnections()
 			}
 		}
 	}
@@ -188,6 +196,14 @@ func NewClient(config *ClientConfig) (Client, error) {
 		}
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
+
+	parsedURL, err := url.ParseRequestURI(baseURL)
+	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return nil, fmt.Errorf("xyo: invalid BaseURL %q: %w", baseURL, err)
+	}
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return nil, fmt.Errorf("xyo: invalid scheme %q in BaseURL (must be http or https)", parsedURL.Scheme)
+	}
 
 	rawHTTPCl := config.HTTPClient
 	if rawHTTPCl == nil {
@@ -232,6 +248,7 @@ func NewClient(config *ClientConfig) (Client, error) {
 		keySupplier:          keySupplier,
 		trustedDownloadHosts: trustedHosts,
 		apiClient:            apiClient,
-		httpCl:               rawHTTPCl,
+		httpCl:               httpCl,
+		transport:            transport,
 	}, nil
 }

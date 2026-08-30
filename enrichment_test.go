@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/xyo-financial/sdk-go/v2/openapi"
 )
@@ -1104,5 +1105,111 @@ func TestDebugLogs_BodySuppressionAndSingleDump(t *testing.T) {
 	respDumpCount := strings.Count(logOutput, "HTTP/1.1 200 OK")
 	if respDumpCount != 1 {
 		t.Errorf("Expected exactly 1 response wire dump, got %d. Output:\n%s", respDumpCount, logOutput)
+	}
+}
+
+func TestClient_Close_CustomHTTPClientWithNilTransport(t *testing.T) {
+	customHTTP := &http.Client{
+		Timeout: 15 * time.Second,
+	}
+	client, err := NewClient(&ClientConfig{
+		APIKey:     "test-api-key",
+		HTTPClient: customHTTP,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+	if err := client.Close(); err != nil {
+		t.Fatalf("client.Close() failed: %v", err)
+	}
+}
+
+func TestEnrichmentRequest_Validate_CountryCode(t *testing.T) {
+	validCodes := []string{"GB", "gb", "US", "fr", " DE "}
+	for _, code := range validCodes {
+		req := &EnrichmentRequest{
+			Content:     "Valid merchant content",
+			CountryCode: code,
+		}
+		if err := req.Validate(); err != nil {
+			t.Errorf("expected valid country code %q, got error: %v", code, err)
+		}
+	}
+
+	invalidCodes := []string{"", " ", "12", "G1", "1G", "GBR", "U", "USA", "E!", "@#"}
+	for _, code := range invalidCodes {
+		req := &EnrichmentRequest{
+			Content:     "Valid merchant content",
+			CountryCode: code,
+		}
+		if err := req.Validate(); err == nil {
+			t.Errorf("expected validation error for country code %q, got nil", code)
+		}
+	}
+}
+
+func TestEnrichTransaction_TrimmedAndNormalizedOnWire(t *testing.T) {
+	var capturedBody map[string]interface{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&capturedBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"merchant":    "Clean Merchant",
+			"description": "Clean description",
+			"categories":  []string{"General"},
+			"logo":        "",
+			"location":    "",
+			"address":     "",
+		})
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(&ClientConfig{
+		APIKey:  "test-api-key",
+		BaseURL: ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	rawReq := &EnrichmentRequest{
+		Content:     "   Starbucks Coffee London   ",
+		CountryCode: "  gb  ",
+	}
+
+	_, err = client.EnrichTransaction(context.Background(), rawReq)
+	if err != nil {
+		t.Fatalf("EnrichTransaction failed: %v", err)
+	}
+
+	if capturedBody["content"] != "Starbucks Coffee London" {
+		t.Errorf("expected trimmed content 'Starbucks Coffee London', got %q", capturedBody["content"])
+	}
+	if capturedBody["countryCode"] != "GB" {
+		t.Errorf("expected trimmed & uppercase normalized country code 'GB', got %q", capturedBody["countryCode"])
+	}
+
+	// Also ensure rawReq was not mutated in place
+	if rawReq.CountryCode != "  gb  " {
+		t.Errorf("caller's original CountryCode was mutated in place: %q", rawReq.CountryCode)
+	}
+}
+
+func TestNewClient_InvalidBaseURL(t *testing.T) {
+	invalidURLs := []string{
+		"ftp://example.com",
+		"gopher://example.com",
+		"://invalid",
+		"http://",
+	}
+	for _, u := range invalidURLs {
+		_, err := NewClient(&ClientConfig{
+			APIKey:  "test-key",
+			BaseURL: u,
+		})
+		if err == nil {
+			t.Errorf("expected error for invalid BaseURL %q, got nil", u)
+		}
 	}
 }
