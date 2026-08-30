@@ -1,6 +1,5 @@
 .gitignore
 api_enrichment.go
-client.go
 configuration.go
 model_api_error.go
 model_enrich_transaction_collection_response.go
