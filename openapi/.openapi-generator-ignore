@@ -29,3 +29,21 @@ README.md
 api/
 docs/
 test/
+
+# Privacy control: do not let the generator restore its own debug dumping.
+#
+# The stock generator emits `httputil.DumpRequestOut(request, true)` in
+# client.go. The trailing `true` includes the request body, so enabling Debug
+# writes plaintext transaction content, which is PII, straight to the log. It
+# also duplicates every dump, because authRoundTripper in ../client.go already
+# dumps each request and response with the body omitted and sensitive headers
+# redacted.
+#
+# That block was removed by hand, but regeneration kept restoring it and the
+# fix was silently lost each time. Ignoring the file makes the removal durable.
+# Only comments in client.go are spec-dependent, and the generator version is
+# pinned in .github/workflows/generate.yml, so nothing of substance is frozen.
+#
+# TestDebugLogs_BodySuppressionAndSingleDump in enrichment_test.go is the
+# safety net: it fails if body dumping or a duplicate dump ever returns.
+client.go
