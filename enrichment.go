@@ -170,15 +170,21 @@ type Enrichment interface {
 	DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error)
 }
 
-// Static validation errors for EnrichmentRequest.Validate()
+// Sentinel errors returned by EnrichmentRequest.Validate for errors.Is matching.
 var (
-	ErrNilRequest         = errors.New("request is nil")
-	ErrEmptyContent       = errors.New("Content cannot be empty")
-	ErrContentTooLong     = errors.New("Content exceeds maximum allowed length of 128 characters")
-	ErrEmptyCountryCode   = errors.New("CountryCode cannot be empty")
+	// ErrNilRequest is returned when an EnrichmentRequest pointer is nil.
+	ErrNilRequest = errors.New("request is nil")
+	// ErrEmptyContent is returned when EnrichmentRequest.Content is empty or only whitespace.
+	ErrEmptyContent = errors.New("Content cannot be empty")
+	// ErrContentTooLong is returned when EnrichmentRequest.Content exceeds 128 Unicode characters.
+	ErrContentTooLong = errors.New("Content exceeds maximum allowed length of 128 characters")
+	// ErrEmptyCountryCode is returned when EnrichmentRequest.CountryCode is empty or only whitespace.
+	ErrEmptyCountryCode = errors.New("CountryCode cannot be empty")
+	// ErrInvalidCountryCode is returned when EnrichmentRequest.CountryCode is not a 2-letter ISO 3166-1 alpha-2 code.
 	ErrInvalidCountryCode = errors.New("CountryCode must be a 2-letter ISO 3166-1 alpha-2 country code")
 )
 
+// isAlpha2 checks if a string consists of exactly 2 ASCII alphabetic characters (case-insensitive).
 func isAlpha2(s string) bool {
 	if len(s) != 2 {
 		return false

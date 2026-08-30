@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.1.1] - 2026-08-25
+### Added
+- Exported sentinel validation errors (`ErrNilRequest`, `ErrEmptyContent`, `ErrContentTooLong`, `ErrEmptyCountryCode`, `ErrInvalidCountryCode`) enabling `errors.Is` matching.
+
+### Fixed
+- Resolved connection leak in `Client.Close()` when a custom `*http.Client` with `nil` Transport is provided.
+- Enforced strict 2-letter ISO 3166-1 alpha-2 validation (`[A-Za-z]{2}`) and automatic uppercase normalization for `CountryCode`.
+- Added strict `http`/`https` scheme and host validation for `BaseURL` during client initialization.
+- Upgraded release workflow example verification step to Go 1.22.
 
 ### Changed
 - Automated documentation cross-repository version dispatch synchronization integration.
