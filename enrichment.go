@@ -170,6 +170,15 @@ type Enrichment interface {
 	DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error)
 }
 
+// Static validation errors for EnrichmentRequest.Validate()
+var (
+	ErrNilRequest         = errors.New("request is nil")
+	ErrEmptyContent       = errors.New("Content cannot be empty")
+	ErrContentTooLong     = errors.New("Content exceeds maximum allowed length of 128 characters")
+	ErrEmptyCountryCode   = errors.New("CountryCode cannot be empty")
+	ErrInvalidCountryCode = errors.New("CountryCode must be a 2-letter ISO 3166-1 alpha-2 country code")
+)
+
 func isAlpha2(s string) bool {
 	if len(s) != 2 {
 		return false
@@ -181,21 +190,21 @@ func isAlpha2(s string) bool {
 // Validate checks that the enrichment request fields meet business and ISO constraints.
 func (r *EnrichmentRequest) Validate() error {
 	if r == nil {
-		return fmt.Errorf("request is nil")
+		return ErrNilRequest
 	}
 	content := strings.TrimSpace(r.Content)
 	if content == "" {
-		return fmt.Errorf("Content cannot be empty")
+		return ErrEmptyContent
 	}
 	if utf8.RuneCountInString(content) > 128 {
-		return fmt.Errorf("Content exceeds maximum allowed length of 128 characters")
+		return ErrContentTooLong
 	}
 	countryCode := strings.TrimSpace(r.CountryCode)
 	if countryCode == "" {
-		return fmt.Errorf("CountryCode cannot be empty")
+		return ErrEmptyCountryCode
 	}
 	if !isAlpha2(countryCode) {
-		return fmt.Errorf("CountryCode must be a 2-letter ISO 3166-1 alpha-2 country code")
+		return ErrInvalidCountryCode
 	}
 	return nil
 }

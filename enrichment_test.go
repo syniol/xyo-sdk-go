@@ -1196,6 +1196,65 @@ func TestEnrichTransaction_TrimmedAndNormalizedOnWire(t *testing.T) {
 	}
 }
 
+func TestEnrichTransactions_TrimmedAndNormalizedOnWire(t *testing.T) {
+	var capturedItems []map[string]interface{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&capturedItems)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":   "job_bulk_123",
+			"link": "https://download.xyo.financial/batches/123.tar.gz",
+		})
+	}))
+	defer ts.Close()
+
+	client, err := NewClient(&ClientConfig{
+		APIKey:  "test-api-key",
+		BaseURL: ts.URL,
+	})
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	rawReq1 := &EnrichmentRequest{
+		Content:     "   Costa Coffee London   ",
+		CountryCode: "  gb  ",
+	}
+	rawReq2 := &EnrichmentRequest{
+		Content:     "   Apple Store Fifth Ave   ",
+		CountryCode: "  us  ",
+	}
+
+	_, err = client.EnrichTransactions(context.Background(), []*EnrichmentRequest{rawReq1, rawReq2})
+	if err != nil {
+		t.Fatalf("EnrichTransactions failed: %v", err)
+	}
+
+	if len(capturedItems) != 2 {
+		t.Fatalf("expected 2 captured items, got %d", len(capturedItems))
+	}
+
+	if capturedItems[0]["content"] != "Costa Coffee London" {
+		t.Errorf("expected trimmed content 'Costa Coffee London', got %q", capturedItems[0]["content"])
+	}
+	if capturedItems[0]["countryCode"] != "GB" {
+		t.Errorf("expected trimmed & uppercase normalized country code 'GB', got %q", capturedItems[0]["countryCode"])
+	}
+
+	if capturedItems[1]["content"] != "Apple Store Fifth Ave" {
+		t.Errorf("expected trimmed content 'Apple Store Fifth Ave', got %q", capturedItems[1]["content"])
+	}
+	if capturedItems[1]["countryCode"] != "US" {
+		t.Errorf("expected trimmed & uppercase normalized country code 'US', got %q", capturedItems[1]["countryCode"])
+	}
+
+	// Ensure caller's original request objects were not mutated in place
+	if rawReq1.CountryCode != "  gb  " || rawReq2.CountryCode != "  us  " {
+		t.Errorf("caller's original CountryCode was mutated in place")
+	}
+}
+
 func TestNewClient_InvalidBaseURL(t *testing.T) {
 	invalidURLs := []string{
 		"ftp://example.com",

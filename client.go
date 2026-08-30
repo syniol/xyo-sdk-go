@@ -198,8 +198,11 @@ func NewClient(config *ClientConfig) (Client, error) {
 	baseURL = strings.TrimRight(baseURL, "/")
 
 	parsedURL, err := url.ParseRequestURI(baseURL)
-	if err != nil || parsedURL.Scheme == "" || parsedURL.Host == "" {
+	if err != nil {
 		return nil, fmt.Errorf("xyo: invalid BaseURL %q: %w", baseURL, err)
+	}
+	if parsedURL.Scheme == "" || parsedURL.Host == "" {
+		return nil, fmt.Errorf("xyo: invalid BaseURL %q: missing scheme or host", baseURL)
 	}
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
 		return nil, fmt.Errorf("xyo: invalid scheme %q in BaseURL (must be http or https)", parsedURL.Scheme)
