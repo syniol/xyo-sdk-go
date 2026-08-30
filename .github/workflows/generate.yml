@@ -56,6 +56,11 @@ jobs:
                  openapi/docs \
                  openapi/api
 
+          # The generator does not gofmt its output, but the committed tree is gofmt clean, so a raw
+          # regeneration diff is dominated by lost struct-field alignment and stray blank lines rather
+          # than by anything from the specification. Formatting here keeps regeneration diffs readable.
+          gofmt -w openapi/
+
           # Clean up specs checkout so it is not committed
           rm -rf specs
 
