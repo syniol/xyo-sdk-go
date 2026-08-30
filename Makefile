@@ -14,7 +14,7 @@ lint:
 	fi
 
 test:
-	go test ./... -v
+	go test -race ./... -v
 
 check: fmt lint test
 

@@ -170,24 +170,47 @@ type Enrichment interface {
 	DownloadEnrichmentCollection(ctx context.Context, downloadURL string) ([]*EnrichmentResponse, error)
 }
 
+// Sentinel errors returned by EnrichmentRequest.Validate for errors.Is matching.
+var (
+	// ErrNilRequest is returned when an EnrichmentRequest pointer is nil.
+	ErrNilRequest = errors.New("request is nil")
+	// ErrEmptyContent is returned when EnrichmentRequest.Content is empty or only whitespace.
+	ErrEmptyContent = errors.New("Content cannot be empty")
+	// ErrContentTooLong is returned when EnrichmentRequest.Content exceeds 128 Unicode characters.
+	ErrContentTooLong = errors.New("Content exceeds maximum allowed length of 128 characters")
+	// ErrEmptyCountryCode is returned when EnrichmentRequest.CountryCode is empty or only whitespace.
+	ErrEmptyCountryCode = errors.New("CountryCode cannot be empty")
+	// ErrInvalidCountryCode is returned when EnrichmentRequest.CountryCode is not a 2-letter ISO 3166-1 alpha-2 code.
+	ErrInvalidCountryCode = errors.New("CountryCode must be a 2-letter ISO 3166-1 alpha-2 country code")
+)
+
+// isAlpha2 checks if a string consists of exactly 2 ASCII alphabetic characters (case-insensitive).
+func isAlpha2(s string) bool {
+	if len(s) != 2 {
+		return false
+	}
+	return (s[0] >= 'A' && s[0] <= 'Z' || s[0] >= 'a' && s[0] <= 'z') &&
+		(s[1] >= 'A' && s[1] <= 'Z' || s[1] >= 'a' && s[1] <= 'z')
+}
+
 // Validate checks that the enrichment request fields meet business and ISO constraints.
 func (r *EnrichmentRequest) Validate() error {
 	if r == nil {
-		return fmt.Errorf("request is nil")
+		return ErrNilRequest
 	}
 	content := strings.TrimSpace(r.Content)
 	if content == "" {
-		return fmt.Errorf("Content cannot be empty")
+		return ErrEmptyContent
 	}
 	if utf8.RuneCountInString(content) > 128 {
-		return fmt.Errorf("Content exceeds maximum allowed length of 128 characters")
+		return ErrContentTooLong
 	}
 	countryCode := strings.TrimSpace(r.CountryCode)
 	if countryCode == "" {
-		return fmt.Errorf("CountryCode cannot be empty")
+		return ErrEmptyCountryCode
 	}
-	if utf8.RuneCountInString(countryCode) != 2 {
-		return fmt.Errorf("CountryCode must be exactly 2 characters (ISO 3166-1 alpha-2)")
+	if !isAlpha2(countryCode) {
+		return ErrInvalidCountryCode
 	}
 	return nil
 }
@@ -213,7 +236,7 @@ func (c *client) EnrichTransactionWithOptions(ctx context.Context, req *Enrichme
 		return nil, fmt.Errorf("xyo: EnrichTransaction: %w", err)
 	}
 
-	genReq := openapi.NewEnrichmentRequest(req.Content, req.CountryCode)
+	genReq := openapi.NewEnrichmentRequest(strings.TrimSpace(req.Content), strings.ToUpper(strings.TrimSpace(req.CountryCode)))
 	apiReq := c.apiClient.EnrichmentAPI.EnrichTransaction(sanitizeContext(ctx)).EnrichmentRequest(*genReq)
 
 	if cid != "" {
@@ -277,8 +300,8 @@ func (c *client) EnrichTransactionsWithOptions(ctx context.Context, reqs []*Enri
 			return nil, fmt.Errorf("xyo: EnrichTransactions: request at index %d invalid: %w", i, err)
 		}
 		items = append(items, openapi.EnrichTransactionsRequestInner{
-			Content:     req.Content,
-			CountryCode: req.CountryCode,
+			Content:     strings.TrimSpace(req.Content),
+			CountryCode: strings.ToUpper(strings.TrimSpace(req.CountryCode)),
 		})
 	}
 
@@ -500,7 +523,7 @@ func (c *client) DownloadEnrichmentCollection(ctx context.Context, downloadURL s
 
 	limitedTarStream := &maxBytesReader{r: gzReader, limit: DefaultMaxArchiveBytes, desc: "decompressed archive stream"}
 	tarReader := tar.NewReader(limitedTarStream)
-	var results []*EnrichmentResponse
+	results := make([]*EnrichmentResponse, 0, 64)
 
 	for entryCount := 0; ; entryCount++ {
 		if entryCount >= DefaultMaxTarEntries {
