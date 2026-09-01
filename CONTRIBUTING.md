@@ -6,14 +6,38 @@ This document outlines the architecture, contribution workflow, code generation 
 
 ---
 
+## 📑 Table of Contents
+- [📋 1. Contribution Policy & Issue Reporting](#1-contribution-policy-issue-reporting)
+  - [🔀 Contribution Policy](#contribution-policy)
+  - [🔹 Reporting Issues & Requesting Features](#reporting-issues-requesting-features)
+- [🏗 2. Two-Layer Architecture](#2-two-layer-architecture)
+  - [🔹 Layer 1: Low-Level Generated Layer (`openapi/`)](#layer-1-low-level-generated-layer-openapi)
+  - [🔹 Layer 2: Ergonomic Wrapper Layer (`client.go`, `enrichment.go`, `errors.go`)](#layer-2-ergonomic-wrapper-layer-clientgo-enrichmentgo-errorsgo)
+- [🔀 3. Contribution Workflow & Decision Matrix](#3-contribution-workflow-decision-matrix)
+- [⚙️ 4. Code Generation](#4-code-generation)
+  - [⚙️ Automated Upstream Synchronization](#automated-upstream-synchronization)
+  - [⚙️ Manual / Local Code Generation](#manual-local-code-generation)
+  - [📋 Generated Code Policy](#generated-code-policy)
+- [🛡 5. Quality Gates & Local Verification](#5-quality-gates-local-verification)
+  - [🛡 1. Unified Local Quality Check](#1-unified-local-quality-check)
+  - [🔹 2. Code Formatting (Excluding Generated Code)](#2-code-formatting-excluding-generated-code)
+  - [🛡 3. Build & Static Analysis](#3-build-static-analysis)
+  - [🧪 4. Test Suite & Race Detector](#4-test-suite-race-detector)
+  - [🔹 5. Example Application Verification](#5-example-application-verification)
+  - [🛡 6. Containerized Build (CI Parity)](#6-containerized-build-ci-parity)
+- [🚀 6. Pull Request & Release Process](#6-pull-request-release-process)
+  - [🚀 Branching and Commits](#branching-and-commits)
+  - [🔀 Release & Versioning Workflow](#release-versioning-workflow)
+- [📄 7. License](#7-license)
+
 ## 📋 1. Contribution Policy & Issue Reporting
 
-### Contribution Policy
+### 🔀 Contribution Policy
 Development, pull request reviews, and package publishing are maintained by **Syniol Limited** engineers. 
 
 External pull requests submitted directly to this repository without prior coordination may be rejected. However, feedback, bug reports, and enhancement proposals from the developer community are welcome.
 
-### Reporting Issues & Requesting Features
+### 🔹 Reporting Issues & Requesting Features
 If you discover a bug, have questions, or wish to propose an enhancement:
 1. Search existing [GitHub Issues](https://github.com/xyo-financial/sdk-go/issues) to see if the topic is already tracked.
 2. Open a new issue with:
@@ -63,12 +87,12 @@ The XYO Go SDK employs a **Two-Layer Architecture** designed to separate raw HTT
   XYO RESTful API (https://api.xyo.financial)
 ```
 
-### Layer 1: Low-Level Generated Layer (`openapi/`)
+### 🔹 Layer 1: Low-Level Generated Layer (`openapi/`)
 - **Source:** Automatically generated from the canonical OpenAPI specification maintained in [`xyo-financial/specs`](https://github.com/xyo-financial/specs).
 - **Purpose:** Handles low-level HTTP wire protocol serialization, JSON marshaling/unmarshaling, API endpoint routing, and raw response parsing (`openapi.APIClient`, `openapi.EnrichmentAPI`, `openapi.EnrichmentRequest`, `openapi.GenericOpenAPIError`).
 - **Policy:** **READ-ONLY & IMMUTABLE**. Under no circumstances should files inside the `openapi/` directory be edited or reformatted manually. Any manual changes will be overwritten during the next code generation cycle.
 
-### Layer 2: Ergonomic Wrapper Layer (`client.go`, `enrichment.go`, `errors.go`)
+### 🔹 Layer 2: Ergonomic Wrapper Layer (`client.go`, `enrichment.go`, `errors.go`)
 - **Source:** Hand-crafted Go code written and maintained directly in this repository.
 - **Purpose:** Provides a clean, ergonomic, and idiomatic Go interface for developers:
   - [`client.go`](client.go): Configures and instantiates the `Client` interface with `ClientConfig`, default production timeouts (30s), Bearer token injection, and customizable HTTP transports.
@@ -94,14 +118,14 @@ To maintain integrity across the XYO SDK ecosystem, determine where your propose
 
 ## ⚙️ 4. Code Generation
 
-### Automated Upstream Synchronization
+### ⚙️ Automated Upstream Synchronization
 When a new release tag is pushed to [`xyo-financial/specs`](https://github.com/xyo-financial/specs), a GitHub Actions workflow automatically sends a dispatch event to this repository. The [`.github/workflows/generate.yml`](.github/workflows/generate.yml) workflow:
 1. Checks out `xyo-financial/specs` at the tagged release.
 2. Runs `openapi-generator-cli` to regenerate `openapi/`.
 3. Cleans up generator scaffolding artifacts.
 4. Compiles, vets, and commits the updated client.
 
-### Manual / Local Code Generation
+### ⚙️ Manual / Local Code Generation
 If you need to regenerate the low-level `openapi/` layer locally:
 
 #### Prerequisites
@@ -139,7 +163,7 @@ rm -rf openapi/test openapi/docs openapi/api
 
 ---
 
-### Generated Code Policy
+### 📋 Generated Code Policy
 
 > [!IMPORTANT]
 > `openapi/` is produced by OpenAPI Generator and is committed **exactly as the generator emits it**.
@@ -161,41 +185,41 @@ If generated output is wrong, fix it at source, never in the output:
 
 All contributions must satisfy the following quality gates before being merged:
 
-### 1. Unified Local Quality Check
+### 🛡 1. Unified Local Quality Check
 Run the comprehensive pre-commit quality target:
 ```bash
 make check
 ```
 This runs format checks on non-generated code, `go vet`, and the complete test suite.
 
-### 2. Code Formatting (Excluding Generated Code)
+### 🔹 2. Code Formatting (Excluding Generated Code)
 Format hand-crafted SDK code according to standard Go conventions:
 ```bash
 make fmt
 ```
 *(Note: Generated files in `openapi/` are ignored by `.golangci.yml` and the formatting rules).*
 
-### 3. Build & Static Analysis
+### 🛡 3. Build & Static Analysis
 Ensure the entire module compiles cleanly and passes vetting:
 ```bash
 go build ./...
 go vet ./...
 ```
 
-### 4. Test Suite & Race Detector
+### 🧪 4. Test Suite & Race Detector
 Execute all unit and integration tests with verbose output:
 ```bash
 go test -v -race ./...
 ```
 Ensure all test cases pass without panics, data races, or unhandled errors.
 
-### 5. Example Application Verification
+### 🔹 5. Example Application Verification
 Confirm that the sample application compiles and runs without issues:
 ```bash
 cd example && go run main.go && cd ..
 ```
 
-### 6. Containerized Build (CI Parity)
+### 🛡 6. Containerized Build (CI Parity)
 Verify the production Docker build:
 ```bash
 make build
@@ -205,13 +229,13 @@ make build
 
 ## 🚀 6. Pull Request & Release Process
 
-### Branching and Commits
+### 🚀 Branching and Commits
 1. Branch from `main` using descriptive branch names (e.g. `feat/enrichment-retry`, `fix/error-unmarshaling`).
 2. Adhere to [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat:`, `fix:`, `docs:`, `chore:`).
 3. Ensure every new feature or bug fix includes corresponding table-driven unit tests in `*_test.go`.
 4. Ensure all public types, interfaces, and functions include descriptive GoDoc comments.
 
-### Release & Versioning Workflow
+### 🔀 Release & Versioning Workflow
 Releases follow [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`):
 
 1. Ensure all changes are merged into `main` and all quality gates pass.
